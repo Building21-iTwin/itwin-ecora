@@ -1,6 +1,6 @@
 import * as React from "react";
 import { IModelApp, IModelConnection } from "@itwin/core-frontend";
-import { Table } from "../UIProviders/TableGrid";
+import { Table } from "./TableGrid";
 import { UnifiedSelectionContextProvider } from "@itwin/presentation-components";
 import { useEffect } from "react";
 import { ErrorBoundary } from "react-error-boundary";

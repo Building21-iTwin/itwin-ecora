@@ -2,9 +2,10 @@ import {
   StagePanelLocation,
   StagePanelSection,
   StageUsage,
+  type UiItemsProvider,
+  type Widget,
 } from "@itwin/appui-react";
-import type { UiItemsProvider, Widget } from "@itwin/appui-react";
-import RulesTable from "./RulesTable"
+import RulesTable from "../containers/RulesTable"
 
 export class BottomGridUIProvider implements UiItemsProvider {
   public readonly id = "BottomGridUIProvider";
@@ -18,7 +19,7 @@ export class BottomGridUIProvider implements UiItemsProvider {
   ): ReadonlyArray<Widget> {
     const widgets: Widget[] = [];
     if (
-      stageUsage === StageUsage.General &&
+      stageUsage === StageUsage.General.toString() &&
       location === StagePanelLocation.Bottom &&
       section === StagePanelSection.Start
     ) {

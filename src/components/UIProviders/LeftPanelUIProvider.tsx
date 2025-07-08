@@ -5,9 +5,9 @@ import {
   type UiItemsProvider,
   type Widget,
 } from "@itwin/appui-react";
-import { CategoryComponent } from "./CategoryComponent";
-import { ModelComponent } from "./ModelComponent";
-import { QueriesComponent } from "./QueriesComponent";
+import { CategoryComponent } from "../shared/CategoryComponent";
+import { ModelComponent } from "../shared/ModelComponent";
+import { QueriesComponent } from "../shared/QueriesComponent";
 
 export class LeftPanelUIProvider implements UiItemsProvider {
   public readonly id = "LeftPanelUIProvider";

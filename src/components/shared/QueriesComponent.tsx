@@ -2,7 +2,7 @@ import React from "react";
 import { ColorDef, QueryRowFormat } from "@itwin/core-common";
 import { IModelApp } from "@itwin/core-frontend";
 import { Button, Flex } from "@itwin/itwinui-react";
-import Querycompt, { type Queryprops } from "./QueryCompt";
+import Querycompt, { type Queryprops } from "../utils/QueryCompt";
 import { selectionStorage } from "../../SelectionStorage";
 
 export function QueriesComponent() {
