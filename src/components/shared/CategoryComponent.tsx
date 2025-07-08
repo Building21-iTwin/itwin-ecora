@@ -18,8 +18,8 @@ export function CategoryComponent() {
   const [searchString, setSearchString] = useState<string>("");
   const iModel = IModelApp.viewManager.selectedView?.iModel;
 
-  useEffect(() => {
-    const getCategories = async () => {
+  useEffect(() => { // queries are not made until something is changed 
+    const getCategories = async () => { // note: an async function may not be the best way to do this(?) 
       if (iModel) {
         const queryReader = iModel.createQueryReader(
           "SELECT ECInstanceId, COALESCE(UserLabel, CodeValue) FROM bis.SpatialCategory WHERE ECInstanceId IN (SELECT DISTINCT Category.Id FROM bis.GeometricElement3d WHERE Category.Id IS NOT NULL)"

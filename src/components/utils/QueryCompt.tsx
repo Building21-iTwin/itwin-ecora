@@ -1,3 +1,7 @@
+/**
+ * ensure that state is shared across components
+ */
+
 import * as React from "react";
 import { Flex, LabeledTextarea } from "@itwin/itwinui-react";
 import { ColorDef } from "@itwin/core-common";
