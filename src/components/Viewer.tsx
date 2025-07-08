@@ -30,6 +30,7 @@ import { selectionStorage } from "../SelectionStorage";
 import { treeWidgetUiProvider } from "./TreeWidgetUiProvider";
 import { propertyGridUiProvider } from "./PropertyGridUiProvider";
 import { LeftPanelUIProvider } from "./UIProviders/LeftPanelUIProvider";
+import { BottomGridUIProvider } from "./UIProviders/BottomGridUIProvider"; 
 
 interface ViewerProps {
   iTwinId: string;
@@ -71,6 +72,7 @@ export function Viewer({ iTwinId, iModelId, changesetId }: ViewerProps) {
       uiProviders={[
         new ViewerNavigationToolsProvider(),
         new LeftPanelUIProvider(),
+        new BottomGridUIProvider(),
         new ViewerContentToolsProvider({
           vertical: {
             measureGroup: false,
