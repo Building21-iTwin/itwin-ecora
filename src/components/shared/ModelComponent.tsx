@@ -13,8 +13,21 @@ export function ModelComponent() {
   const { selectedModelIds, setSelectedModelIds } =
     useContext(CategoryModelContext);
   const [searchString, setSearchString] = useState<string>("");
-  const iModel = IModelApp.viewManager.selectedView?.iModel;
+  const [iModel, setIModel] = useState(() => IModelApp.viewManager.selectedView?.iModel);
 
+  // Listen for view changes and update iModel
+  useEffect(() => {
+    const updateIModel = () => {
+      setIModel(IModelApp.viewManager.selectedView?.iModel);
+    };
+    IModelApp.viewManager.onSelectedViewportChanged.addListener(updateIModel);
+    updateIModel();
+    return () => {
+      IModelApp.viewManager.onSelectedViewportChanged.removeListener(updateIModel);
+    };
+  }, []);
+
+  // Fetch models when iModel changes
   useEffect(() => {
     const getModels = async () => {
       if (iModel) {
@@ -23,36 +36,32 @@ export function ModelComponent() {
         );
         const cats = await queryReader.toArray();
         setModels(cats.map((cat) => ({ id: cat[0], label: cat[1] })));
+      } else {
+        setModels([]);
       }
     };
-    if (models.length === 0) {
-      void getModels();
-    }
-  }, [models, iModel]);
+    void getModels();
+  }, [iModel]);
 
-  const handleModelChange = async (
+  const handleModelChange = (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    const modelIds = event.target.id;
-
-    if (iModel) {
-      const isSelected = selectedModelIds.includes(modelIds);
-      const newSelectedIds = isSelected
-        ? selectedModelIds.filter((id) => id !== modelIds)
-        : [...selectedModelIds, modelIds];
-
-      setSelectedModelIds(newSelectedIds);
-    }
+    const modelId = event.target.id;
+    const isSelected = selectedModelIds.includes(modelId);
+    const newSelectedIds = isSelected
+      ? selectedModelIds.filter((id) => id !== modelId)
+      : [...selectedModelIds, modelId];
+    setSelectedModelIds(newSelectedIds);
   };
 
   const searchTextLower = searchString.toLowerCase();
-  const filteredModels = models.filter((category) => {
-    const categoryLower = category.label.toLowerCase();
-    return categoryLower.includes(searchTextLower);
+  const filteredModels = models.filter((model) => {
+    const modelLower = model.label.toLowerCase();
+    return modelLower.includes(searchTextLower);
   });
 
   const modelElements = filteredModels.map((model) => (
-    <ul key={model.id}>
+    <li key={model.id} style={{ listStyle: "none", margin: "0.25rem 0", padding: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
       <input
         type="checkbox"
         id={model.id}
@@ -61,9 +70,9 @@ export function ModelComponent() {
         onChange={handleModelChange}
       />
       <Tooltip content="Select Model" placement="bottom">
-        <label htmlFor={model.id}>{model.label}</label>
+        <label htmlFor={model.id} style={{ cursor: "pointer" }}>{model.label}</label>
       </Tooltip>
-    </ul>
+    </li>
   ));
 
   function searchInputChanged(event: any): void {
@@ -71,25 +80,25 @@ export function ModelComponent() {
   }
 
   function ClearBoxes(): void {
-    setSelectedModelIds([])
+    setSelectedModelIds([]);
   }
 
   return (
     <div className="">
-      <Flex style={{position: "absolute", width:"98%", padding: "0.3125rem"}}>
+      <Flex style={{ position: "relative", width: "98%", padding: "0.3125rem", zIndex: 1, background: "white" }}>
         <SearchBox
-        className="SearchBox"
-        style={{ position: "sticky", width: "75", right: "0.625rem", top: "0.0625rem" }}
-        aria-label="Search input"
-        inputProps={{
-          placeholder: "Search Models...",
-        }}
-        onChange={searchInputChanged}
-      />
+          className="SearchBox"
+          style={{ width: "85%" }}
+          aria-label="Search input"
+          inputProps={{
+            placeholder: "Search Models...",
+          }}
+          onChange={searchInputChanged}
+        />
         <Button onClick={ClearBoxes}>Clear</Button>
       </Flex>
-      <Flex flexDirection="column" gap="3x1" alignItems="left" style={{paddingTop: "2.1875rem"}}>
-        <body>{modelElements}</body>
+      <Flex flexDirection="column" gap="3x1" alignItems="left" style={{ paddingTop: "0.312rem" }}>
+        <ul style={{ padding: 0, margin: 0 }}>{modelElements}</ul>
       </Flex>
     </div>
   );
