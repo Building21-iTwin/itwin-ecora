@@ -97,7 +97,7 @@ export function CategoryComponent() {
 
   return (
     <div className="">
-      <Flex style={{position: "absolute", width:"98%", padding: "5px"}}>
+      <Flex style={{position: "absolute", width:"98%", padding: "0.3125rem"}}>  {/*where ever possible i will attempt to remove hardcoded pixel values  I.E remove 5px in replacement for rem*/}
         <SearchBox
         className="SearchBox"
         style={{  width: "85%" }}

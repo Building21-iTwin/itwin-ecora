@@ -76,10 +76,10 @@ export function ModelComponent() {
 
   return (
     <div className="">
-      <Flex style={{position: "absolute", width:"98%", padding: "5px"}}>
+      <Flex style={{position: "absolute", width:"98%", padding: "0.3125rem"}}>
         <SearchBox
         className="SearchBox"
-        style={{ position: "sticky", width: "75", right: "10px", top: "1px" }}
+        style={{ position: "sticky", width: "75", right: "0.625rem", top: "0.0625rem" }}
         aria-label="Search input"
         inputProps={{
           placeholder: "Search Models...",
@@ -88,7 +88,7 @@ export function ModelComponent() {
       />
         <Button onClick={ClearBoxes}>Clear</Button>
       </Flex>
-      <Flex flexDirection="column" gap="3x1" alignItems="left" style={{paddingTop: "35px"}}>
+      <Flex flexDirection="column" gap="3x1" alignItems="left" style={{paddingTop: "2.1875rem"}}>
         <body>{modelElements}</body>
       </Flex>
     </div>
