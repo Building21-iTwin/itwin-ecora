@@ -110,7 +110,7 @@ export function CategoryComponent() {
         <Button onClick={ClearBoxes}>Clear</Button>
       </Flex>
       
-      <Flex flexDirection="column" gap="3x1" alignItems="left" style={{paddingTop: "35px"}}>
+      <Flex flexDirection="column" gap="3x1" alignItems="left" style={{paddingTop: "2rem"}}>
         <body>{categoryElements}</body>
       </Flex>
     </div>
