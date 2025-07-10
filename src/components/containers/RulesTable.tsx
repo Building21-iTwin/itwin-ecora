@@ -7,7 +7,7 @@ import { UnifiedSelectionContextProvider } from "@itwin/unified-selection-react"
 
 const RulesTable: React.FC = () => {
   const iModel: IModelConnection | undefined = IModelApp.viewManager.selectedView?.iModel;
-  const { selectedKeys } = useSelection();
+  const { selectedKeys, selectedCategoryIds, selectedModelIds } = useSelection();
 
   if (!iModel) {
     return (
@@ -26,6 +26,8 @@ const RulesTable: React.FC = () => {
           height={600}
           iModel={iModel}
           selectedKeys={selectedKeys}
+          selectedCategoryIds={selectedCategoryIds}
+          selectedModelIds={selectedModelIds}
         />
       </UnifiedSelectionContextProvider>
     </ErrorBoundary>

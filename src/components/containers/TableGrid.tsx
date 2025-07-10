@@ -39,6 +39,12 @@ export interface TableProps {
 
   /** Optional: Selected keys for filtering or highlighting rows. */
   selectedKeys?: string[];
+
+  /** Optional: Selected category IDs for filtering or highlighting rows. */
+  selectedCategoryIds?: string[];
+
+  /** Optional: Selected model IDs for filtering or highlighting rows. */
+  selectedModelIds?: string[];
 }
 
 /**

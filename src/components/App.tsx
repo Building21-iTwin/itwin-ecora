@@ -8,7 +8,7 @@ import { type ComponentProps, createContext, useState } from "react";
 import { AuthorizationState, useAuthorizationContext } from "../Authorization";
 import { Viewer } from "./Viewer";
 import { ProgressLinear } from "@itwin/itwinui-react";
-
+import { SelectionProvider } from "./shared/SelectionContext";
 
 export interface CategoryModelContextType {
   selectedModelIds: string[];
@@ -42,15 +42,17 @@ export function App(props: ComponentProps<typeof Viewer>) {
   };
 
   return (
-    <CategoryModelContext.Provider value={contextValue}>
-      <div className="viewer-container">
-        {state === AuthorizationState.Pending ? (
-          <Loader />
-        ) : (
-          <Viewer {...props} />
-        )}
-      </div>
-    </CategoryModelContext.Provider>
+    <SelectionProvider>
+      <CategoryModelContext.Provider value={contextValue}>
+        <div className="viewer-container">
+          {state === AuthorizationState.Pending ? (
+            <Loader />
+          ) : (
+            <Viewer {...props} />
+          )}
+        </div>
+      </CategoryModelContext.Provider>
+    </SelectionProvider>
   );
 }
 

@@ -2,9 +2,11 @@ import {
   EmphasizeElements,
   IModelApp,
 } from "@itwin/core-frontend";
-import React, { useContext, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button, Flex, SearchBox, Tooltip } from "@itwin/itwinui-react";
-import { CategoryModelContext } from "../App";
+import { useSelection } from "./SelectionContext";
+import { KeySet } from "@itwin/presentation-common";
+import { Presentation } from "@itwin/presentation-frontend";
 
 interface Category {
   label: string;
@@ -13,80 +15,177 @@ interface Category {
 
 export function CategoryComponent() {
   const [categories, setCategories] = useState<Category[]>([]);
-  const { selectedCategoryIds, setSelectedCategoryIds } =
-    useContext(CategoryModelContext);
+  const { selectedCategoryIds, setSelectedCategoryIds } = useSelection();
   const [searchString, setSearchString] = useState<string>("");
   const [iModel, setIModel] = useState(() => IModelApp.viewManager.selectedView?.iModel);
 
   // Listen for view changes and update iModel
   useEffect(() => {
     const updateIModel = () => {
-      setIModel(IModelApp.viewManager.selectedView?.iModel);
+      const newIModel = IModelApp.viewManager.selectedView?.iModel;
+      setIModel(newIModel);
+      if (!newIModel) {
+        setCategories([]);
+        setSelectedCategoryIds([]);
+      }
     };
+    
     IModelApp.viewManager.onSelectedViewportChanged.addListener(updateIModel);
-    // Initial set
     updateIModel();
+    
     return () => {
       IModelApp.viewManager.onSelectedViewportChanged.removeListener(updateIModel);
     };
-  }, []);
+  }, [setSelectedCategoryIds]);
 
   // Fetch categories when iModel changes
   useEffect(() => {
     const getCategories = async () => {
-      if (iModel) {
-        const queryReader = iModel.createQueryReader(
-          "SELECT ECInstanceId, COALESCE(UserLabel, CodeValue) FROM bis.SpatialCategory WHERE ECInstanceId IN (SELECT DISTINCT Category.Id FROM bis.GeometricElement3d WHERE Category.Id IS NOT NULL)"
-        );
-        // Fetch categories from the iModel and update state
-        const cats = await queryReader.toArray();
-
-        // Convert raw query results to objects with id and label properties
-        setCategories(
-          cats.map(([id, label]) => ({ id, label }))
-        );
-      } else {
-        // If no iModel is available, clear the categories list
+      if (!iModel) {
         setCategories([]);
+        return;
+      }
+
+      try {
+        const queryReader = iModel.createQueryReader(`
+          SELECT ECInstanceId, COALESCE(UserLabel, CodeValue, 'Unnamed Category') as label
+          FROM bis.SpatialCategory 
+          WHERE ECInstanceId IN (
+            SELECT DISTINCT Category.Id 
+            FROM bis.GeometricElement3d 
+            WHERE Category.Id IS NOT NULL
+          )
+          ORDER BY label
+        `);
+        
+        const categoryRows = await queryReader.toArray();
+        const categoryList = categoryRows.map((row) => ({
+          id: row.ECInstanceId || row[0],
+          label: row.label || row[1] || `Category ${row.ECInstanceId || row[0]}`,
+        }));
+        
+         // Debug log
+        setCategories(categoryList);
+      } catch (error) {
+        
+        // Fallback query if the complex query fails
+        try {
+          const fallbackQuery = iModel.createQueryReader(`
+            SELECT ECInstanceId, COALESCE(UserLabel, CodeValue) 
+            FROM bis.SpatialCategory 
+            ORDER BY UserLabel, CodeValue
+          `);
+          
+          const fallbackRows = await fallbackQuery.toArray();
+          const fallbackCategories = fallbackRows.map((row) => ({
+            id: row.ECInstanceId || row[0],
+            label: row.UserLabel || row.CodeValue || row[1] || `Category ${row.ECInstanceId || row[0]}`,
+          }));
+          
+           // Debug log
+          setCategories(fallbackCategories);
+        } catch (fallbackError) {
+          
+          setCategories([]);
+        }
       }
     };
+
     void getCategories();
   }, [iModel]);
 
-  // Selection listener (optional, as before)
+  // Update selection when selectedCategoryIds changes
   useEffect(() => {
-    const selectionListener = () => {
-      const view = IModelApp.viewManager.selectedView;
-      if (view) {
-        const emphasize = EmphasizeElements.getOrCreate(view);
-        const appearance = emphasize
-          .createDefaultAppearance()
-          .clone({ nonLocatable: undefined });
-        emphasize.emphasizeSelectedElements(view, appearance, true, false);
-      }
-    };
-    const selectedView = IModelApp.viewManager.selectedView;
-    const selViewIModel = selectedView ? selectedView.iModel : undefined;
-    if (selViewIModel) {
-      if (!selViewIModel.selectionSet.onChanged.has(selectionListener)) {
-        selViewIModel.selectionSet.onChanged.addListener(selectionListener);
-      }
-    }
-    return () => {
-      if (selViewIModel && selViewIModel.selectionSet.onChanged.has(selectionListener)) {
-        selViewIModel.selectionSet.onChanged.removeListener(selectionListener);
-      }
-    };
-  }, [iModel]);
+    if (!iModel) return;
 
-  const handleCategoryChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
+    const updateSelection = async () => {
+      try {
+        if (selectedCategoryIds.length > 0) {
+          // Clear existing selections first
+          iModel.selectionSet.emptyAll();
+          
+          // Create KeySet for Presentation with the selected categories
+          const keySet = new KeySet();
+          
+          for (const categoryId of selectedCategoryIds) {
+            try {
+              // Ensure the categoryId is properly formatted as a string
+              const formattedCategoryId = String(categoryId);
+              
+              
+              // Add the category itself to the selection for property viewing
+              keySet.add({
+                className: "BisCore:SpatialCategory",
+                id: formattedCategoryId
+              });
+            } catch (keySetError) {
+              
+            }
+          }
+          
+          // Update Presentation selection - this will show category properties in the property grid
+          await Presentation.selection.replaceSelection("CategoryComponent", iModel, keySet);
+          
+          // Optionally also select elements within the categories for visualization
+          try {
+            const elementQuery = `
+              SELECT ECInstanceId 
+              FROM bis.GeometricElement3d 
+              WHERE Category.Id IN (${selectedCategoryIds.map(id => `'${id}'`).join(',')})
+              LIMIT 1000
+            `;
+            
+            const queryReader = iModel.createQueryReader(elementQuery);
+            const elements = await queryReader.toArray();
+            const elementIds = elements.map((row) => row.ECInstanceId || row[0]);
+            
+            // Update iModel selection for visual highlighting
+            if (elementIds.length > 0) {
+              iModel.selectionSet.replace(elementIds);
+              
+              // Emphasize elements in viewport
+              const vp = IModelApp.viewManager.selectedView;
+              if (vp) {
+                const emphasize = EmphasizeElements.getOrCreate(vp);
+                emphasize.clearEmphasizedElements(vp);
+                emphasize.emphasizeElements(elementIds, vp, undefined, true);
+              }
+            }
+          } catch (elementError) {
+            
+          }
+          
+        } else {
+          // Clear all selections
+          iModel.selectionSet.emptyAll();
+          await Presentation.selection.clearSelection("CategoryComponent", iModel);
+          
+          // Clear emphasis
+          const vp = IModelApp.viewManager.selectedView;
+          if (vp) {
+            const emphasize = EmphasizeElements.getOrCreate(vp);
+            emphasize.clearEmphasizedElements(vp);
+          }
+        }
+      } catch (error) {
+        console.error("Error updating category selection:", error);
+      }
+    };
+
+    void updateSelection();
+  }, [selectedCategoryIds, iModel]);
+
+  const handleCategoryChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const categoryId = event.target.id;
-    const newSelectedIds = selectedCategoryIds.includes(categoryId)
+    const isSelected = selectedCategoryIds.includes(categoryId);
+    const newSelectedIds = isSelected
       ? selectedCategoryIds.filter((id) => id !== categoryId)
       : [...selectedCategoryIds, categoryId];
     setSelectedCategoryIds(newSelectedIds);
+  };
+
+  const handleClearAll = () => {
+    setSelectedCategoryIds([]);
   };
 
   const searchTextLower = searchString.toLowerCase();
@@ -94,48 +193,101 @@ export function CategoryComponent() {
     const categoryLower = category.label.toLowerCase();
     return categoryLower.includes(searchTextLower);
   });
+
   const categoryElements = filteredCategories.map((category) => (
-    <li key={category.id} style={{ listStyle: "none", margin: "0.25rem 0", padding: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-      <Tooltip content="Select category" placement="bottom">
-        <label htmlFor={category.id} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+    <li 
+      key={category.id} 
+      style={{ 
+        listStyle: "none", 
+        margin: "0.25rem 0", 
+        padding: "0.25rem", 
+        display: "flex", 
+        alignItems: "center", 
+        gap: "0.5rem",
+        borderRadius: "4px",
+        backgroundColor: selectedCategoryIds.includes(category.id) ? "#f0f8ff" : "transparent"
+      }}
+    >
+      <Tooltip content={`Toggle category: ${category.label}`} placement="bottom">
+        <label 
+          htmlFor={category.id} 
+          style={{ 
+            cursor: "pointer", 
+            display: "flex", 
+            alignItems: "center", 
+            gap: "0.5rem",
+            width: "100%"
+          }}
+        >
           <input
             type="checkbox"
             id={category.id}
             name="category"
             checked={selectedCategoryIds.includes(category.id)}
             onChange={handleCategoryChange}
+            style={{ cursor: "pointer" }}
           />
-          {category.label}
+          <span style={{ fontSize: "0.875rem" }}>{category.label}</span>
         </label>
       </Tooltip>
     </li>
   ));
 
-  function searchInputChanged(event: any): void {
+  const searchInputChanged = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchString(event.target.value);
-  }
-
-  function ClearBoxes(): void {
-    setSelectedCategoryIds([]);
-  }
+  };
 
   return (
-    <div className="">
-      <Flex style={{ position: "relative", width: "98%", padding: "0.3125rem", zIndex: 1, background: "white" }}>
-        <SearchBox
-          className="SearchBox"
-          style={{ width: "85%" }}
-          aria-label="Search input"
-          inputProps={{
-            placeholder: "Search Categories...",
-          }}
-          onChange={searchInputChanged}
-        />
-        <Button onClick={ClearBoxes}>Clear</Button>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      {/* Search and controls */}
+      <Flex 
+        style={{ 
+          position: "sticky",
+          top: 0,
+          width: "100%", 
+          padding: "0.5rem", 
+          zIndex: 1, 
+          background: "white",
+          borderBottom: "1px solid #e0e0e0"
+        }}
+        flexDirection="column"
+        gap="xs"
+      >
+        <Flex gap="xs" alignItems="center">
+          <SearchBox
+            style={{ flex: 1 }}
+            placeholder="Search Categories"
+            value={searchString}
+            onChange={searchInputChanged}
+          />
+          <Button 
+            size="small" 
+            onClick={handleClearAll} 
+            disabled={selectedCategoryIds.length === 0}
+          >
+            Clear
+          </Button>
+        </Flex>
+        
+        {selectedCategoryIds.length > 0 && (
+          <div style={{ fontSize: "0.75rem", color: "#666" }}>
+            {selectedCategoryIds.length} category(s) selected
+          </div>
+        )}
       </Flex>
-      <Flex flexDirection="column" gap="3x1" alignItems="left" style={{ paddingTop: "0.312rem" }}>
-        <ul style={{ padding: 0, margin: 0 }}>{categoryElements}</ul>
-      </Flex>
+
+      {/* Category list */}
+      <div style={{ flex: 1, overflow: "auto", padding: "0.25rem" }}>
+        {categories.length === 0 ? (
+          <div style={{ padding: "1rem", textAlign: "center", color: "#666" }}>
+            {iModel ? "No categories found" : "No iModel loaded"}
+          </div>
+        ) : (
+          <ul style={{ padding: 0, margin: 0 }}>
+            {categoryElements}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
