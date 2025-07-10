@@ -38,9 +38,15 @@ export function CategoryComponent() {
         const queryReader = iModel.createQueryReader(
           "SELECT ECInstanceId, COALESCE(UserLabel, CodeValue) FROM bis.SpatialCategory WHERE ECInstanceId IN (SELECT DISTINCT Category.Id FROM bis.GeometricElement3d WHERE Category.Id IS NOT NULL)"
         );
+        // Fetch categories from the iModel and update state
         const cats = await queryReader.toArray();
-        setCategories(cats.map((cat) => ({ id: cat[0], label: cat[1] })));
+
+        // Convert raw query results to objects with id and label properties
+        setCategories(
+          cats.map(([id, label]) => ({ id, label }))
+        );
       } else {
+        // If no iModel is available, clear the categories list
         setCategories([]);
       }
     };

@@ -34,9 +34,17 @@ export function ModelComponent() {
         const queryReader = iModel.createQueryReader(
           "SELECT m.ECInstanceId modelId, COALESCE(p.UserLabel, CodeValue) FROM bis.PhysicalModel m JOIN bis.PhysicalPartition p ON p.ECInstanceId = m.ModeledElement.Id WHERE m.ECInstanceId IN (SELECT DISTINCT Model.Id FROM bis.GeometricElement3d WHERE Model.Id IS NOT NULL)"
         );
+        // Query the iModel for model data and update state
         const cats = await queryReader.toArray();
-        setModels(cats.map((cat) => ({ id: cat[0], label: cat[1] })));
+        // Map the raw query results to an array of objects with id and label properties
+        setModels(
+          cats.map((cat) => ({
+            id: cat[0],    // Model ECInstanceId
+            label: cat[1], // Model label or code value
+          }))
+        );
       } else {
+        // If no iModel is available, clear the models list
         setModels([]);
       }
     };

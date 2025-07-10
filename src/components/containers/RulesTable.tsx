@@ -1,10 +1,12 @@
 import * as React from "react";
 import { IModelApp, IModelConnection } from "@itwin/core-frontend";
 import { Table } from "./TableGrid";
-import { UnifiedSelectionContextProvider } from "@itwin/presentation-components";
 import { useEffect } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import { useSelection } from "../shared/SelectionContext";
+import {  UnifiedSelectionContextProvider } from "@itwin/unified-selection-react";
+
+
 
 function RulesTable() {
   const [iModel, setIModel] = React.useState<IModelConnection | undefined>(
@@ -29,7 +31,8 @@ function RulesTable() {
 
   return (
     <ErrorBoundary FallbackComponent={ResetPage}>
-      <UnifiedSelectionContextProvider imodel={iModel}>
+      {/* @ts-expect-error: storage prop expects SelectionStorage, but we want to pass undefined */}
+      <UnifiedSelectionContextProvider storage={undefined} >
         <Table
           width={800}
           height={600}
