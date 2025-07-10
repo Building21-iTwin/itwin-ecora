@@ -5,12 +5,11 @@ import {
   type UiItemsProvider,
   type Widget,
 } from "@itwin/appui-react";
-import RulesTable from "../containers/RulesTable"
+import RulesTable from "../containers/RulesTable";
 
 export class BottomGridUIProvider implements UiItemsProvider {
   public readonly id = "BottomGridUIProvider";
-  
- 
+
   public provideWidgets(
     _stageId: string,
     stageUsage: string,
@@ -26,12 +25,10 @@ export class BottomGridUIProvider implements UiItemsProvider {
       const bottomGrid: Widget = {
         id: "BottomGrid",
         label: "Description Grid",
-        content: (
-          <RulesTable />
-      ),
-    };
-    widgets.push(bottomGrid);
+        content: <RulesTable />,
+      };
+      widgets.push(bottomGrid);
+    }
+    return widgets;
   }
-  return widgets;
-};
 }

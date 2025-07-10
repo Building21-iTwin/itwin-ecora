@@ -1,25 +1,13 @@
 import * as React from "react";
 import { IModelApp, IModelConnection } from "@itwin/core-frontend";
 import { Table } from "./TableGrid";
-import { useEffect } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import { useSelection } from "../shared/SelectionContext";
-import {  UnifiedSelectionContextProvider } from "@itwin/unified-selection-react";
+import { UnifiedSelectionContextProvider } from "@itwin/unified-selection-react";
 
-
-
-function RulesTable() {
-  const [iModel, setIModel] = React.useState<IModelConnection | undefined>(
-    undefined
-  );
+const RulesTable: React.FC = () => {
+  const iModel: IModelConnection | undefined = IModelApp.viewManager.selectedView?.iModel;
   const { selectedKeys } = useSelection();
-
-  useEffect(() => {
-    setIModel(IModelApp.viewManager.selectedView?.iModel);
-  }, [iModel]);
-
-  // Optionally, you can use selectedKeys to filter or display data in the Table
-  // For now, just pass as a prop for demonstration
 
   if (!iModel) {
     return (
@@ -32,7 +20,7 @@ function RulesTable() {
   return (
     <ErrorBoundary FallbackComponent={ResetPage}>
       {/* @ts-expect-error: storage prop expects SelectionStorage, but we want to pass undefined */}
-      <UnifiedSelectionContextProvider storage={undefined} >
+      <UnifiedSelectionContextProvider storage={undefined}>
         <Table
           width={800}
           height={600}
@@ -42,7 +30,7 @@ function RulesTable() {
       </UnifiedSelectionContextProvider>
     </ErrorBoundary>
   );
-}
+};
 
 function ResetPage(props: { error: Error; resetErrorBoundary: () => void }) {
   return (
