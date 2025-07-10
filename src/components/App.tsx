@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import "./App.css";
-import { type ComponentProps, createContext } from "react";
+import { type ComponentProps, createContext, useState } from "react";
 import { AuthorizationState, useAuthorizationContext } from "../Authorization";
 import { Viewer } from "./Viewer";
 import { ProgressLinear } from "@itwin/itwinui-react";
@@ -29,14 +29,28 @@ export const CategoryModelContext = createContext<CategoryModelContextType>({
 export function App(props: ComponentProps<typeof Viewer>) {
   const { state } = useAuthorizationContext();
 
+  const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [querySelectionContext, _setQuerySelectionContext] = useState<string>("");
+
+  const contextValue = {
+    selectedModelIds,
+    setSelectedModelIds,
+    selectedCategoryIds,
+    setSelectedCategoryIds,
+    querySelectionContext,
+  };
+
   return (
-    <div className="viewer-container">
-      {state === AuthorizationState.Pending ? (
-        <Loader />
-      ) : (
-        <Viewer {...props} />
-      )}
-    </div>
+    <CategoryModelContext.Provider value={contextValue}>
+      <div className="viewer-container">
+        {state === AuthorizationState.Pending ? (
+          <Loader />
+        ) : (
+          <Viewer {...props} />
+        )}
+      </div>
+    </CategoryModelContext.Provider>
   );
 }
 

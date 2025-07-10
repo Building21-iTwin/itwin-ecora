@@ -90,15 +90,17 @@ export function CategoryComponent() {
   });
   const categoryElements = filteredCategories.map((category) => (
     <li key={category.id} style={{ listStyle: "none", margin: "0.25rem 0", padding: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-      <input
-        type="checkbox"
-        id={category.id}
-        name="category"
-        checked={selectedCategoryIds.includes(category.id)}
-        onChange={handleCategoryChange}
-      />
       <Tooltip content="Select category" placement="bottom">
-        <label htmlFor={category.id} style={{ cursor: "pointer" }}>{category.label}</label>
+        <label htmlFor={category.id} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <input
+            type="checkbox"
+            id={category.id}
+            name="category"
+            checked={selectedCategoryIds.includes(category.id)}
+            onChange={handleCategoryChange}
+          />
+          {category.label}
+        </label>
       </Tooltip>
     </li>
   ));

@@ -62,15 +62,17 @@ export function ModelComponent() {
 
   const modelElements = filteredModels.map((model) => (
     <li key={model.id} style={{ listStyle: "none", margin: "0.25rem 0", padding: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-      <input
-        type="checkbox"
-        id={model.id}
-        name="model"
-        checked={selectedModelIds.includes(model.id)}
-        onChange={handleModelChange}
-      />
       <Tooltip content="Select Model" placement="bottom">
-        <label htmlFor={model.id} style={{ cursor: "pointer" }}>{model.label}</label>
+        <label htmlFor={model.id} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <input
+            type="checkbox"
+            id={model.id}
+            name="model"
+            checked={selectedModelIds.includes(model.id)}
+            onChange={handleModelChange}
+          />
+          {model.label}
+        </label>
       </Tooltip>
     </li>
   ));
