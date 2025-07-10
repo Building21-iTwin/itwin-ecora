@@ -19,6 +19,7 @@ import {
 } from "@tanstack/react-router";
 import { App } from "./components/App";
 import { AuthorizationProvider, SignInRedirect } from "./Authorization";
+import { SelectionProvider } from "./components/shared/SelectionContext";
 
 const rootRoute = createRootRoute({
   component: () => (
@@ -33,7 +34,9 @@ const rootRoute = createRootRoute({
         )}
       >
         <AuthorizationProvider>
-          <Outlet />
+          <SelectionProvider>
+            <Outlet />
+          </SelectionProvider>
         </AuthorizationProvider>
       </ErrorBoundary>
     </ThemeProvider>

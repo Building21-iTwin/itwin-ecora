@@ -1,6 +1,6 @@
 import { IModelApp } from "@itwin/core-frontend";
-import React, { useContext, useEffect, useState } from "react";
-import { CategoryModelContext } from "../App";
+import React, { useEffect, useState } from "react";
+import { useSelection } from "./SelectionContext";
 import { Button, Flex, SearchBox, Tooltip } from "@itwin/itwinui-react";
 
 interface Model {
@@ -10,8 +10,8 @@ interface Model {
 
 export function ModelComponent() {
   const [models, setModels] = useState<Model[]>([]);
-  const { selectedModelIds, setSelectedModelIds } =
-    useContext(CategoryModelContext);
+  // Use shared selection context instead of CategoryModelContext
+  const { selectedKeys: selectedModelIds, setSelectedKeys: setSelectedModelIds } = useSelection();
   const [searchString, setSearchString] = useState<string>("");
   const [iModel, setIModel] = useState(() => IModelApp.viewManager.selectedView?.iModel);
 

@@ -1,3 +1,4 @@
+/* eslint-disable no-duplicate-imports */
 /*---------------------------------------------------------------------------------------------
  * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
  * See LICENSE.md in the project root for license terms and full copyright notice.
@@ -35,6 +36,9 @@ export interface TableProps {
 
   /** Component to be rendered if there are no rows to be rendered in the table. */
   noRowsState?: (() => React.ReactElement) | undefined;
+
+  /** Optional: Selected keys for filtering or highlighting rows. */
+  selectedKeys?: string[];
 }
 
 /**

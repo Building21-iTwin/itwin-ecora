@@ -4,15 +4,20 @@ import { Table } from "./TableGrid";
 import { UnifiedSelectionContextProvider } from "@itwin/presentation-components";
 import { useEffect } from "react";
 import { ErrorBoundary } from "react-error-boundary";
+import { useSelection } from "../shared/SelectionContext";
 
 function RulesTable() {
   const [iModel, setIModel] = React.useState<IModelConnection | undefined>(
     undefined
   );
+  const { selectedKeys } = useSelection();
 
   useEffect(() => {
     setIModel(IModelApp.viewManager.selectedView?.iModel);
   }, [iModel]);
+
+  // Optionally, you can use selectedKeys to filter or display data in the Table
+  // For now, just pass as a prop for demonstration
 
   if (!iModel) {
     return (
@@ -25,7 +30,12 @@ function RulesTable() {
   return (
     <ErrorBoundary FallbackComponent={ResetPage}>
       <UnifiedSelectionContextProvider imodel={iModel}>
-        <Table width={800} height={600} iModel={iModel} />
+        <Table
+          width={800}
+          height={600}
+          iModel={iModel}
+          selectedKeys={selectedKeys}
+        />
       </UnifiedSelectionContextProvider>
     </ErrorBoundary>
   );
