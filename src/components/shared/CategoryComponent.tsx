@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-deprecated */
 import {
   EmphasizeElements,
   IModelApp,
 } from "@itwin/core-frontend";
 import React, { useEffect, useState } from "react";
-import { Button, Flex, SearchBox, Tooltip } from "@itwin/itwinui-react";
+import { Button, Flex, Input } from "@itwin/itwinui-react";
 import { useSelection } from "./SelectionContext";
 import { KeySet } from "@itwin/presentation-common";
 import { Presentation } from "@itwin/presentation-frontend";
@@ -64,10 +65,8 @@ export function CategoryComponent() {
           label: row.label || row[1] || `Category ${row.ECInstanceId || row[0]}`,
         }));
         
-         // Debug log
         setCategories(categoryList);
-      } catch (error) {
-        
+      } catch {
         // Fallback query if the complex query fails
         try {
           const fallbackQuery = iModel.createQueryReader(`
@@ -82,10 +81,8 @@ export function CategoryComponent() {
             label: row.UserLabel || row.CodeValue || row[1] || `Category ${row.ECInstanceId || row[0]}`,
           }));
           
-           // Debug log
           setCategories(fallbackCategories);
-        } catch (fallbackError) {
-          
+        } catch {
           setCategories([]);
         }
       }
@@ -112,19 +109,18 @@ export function CategoryComponent() {
               // Ensure the categoryId is properly formatted as a string
               const formattedCategoryId = String(categoryId);
               
-              
               // Add the category itself to the selection for property viewing
               keySet.add({
                 className: "BisCore:SpatialCategory",
                 id: formattedCategoryId
               });
-            } catch (keySetError) {
-              
+            } catch {
+              // Handle keySet errors silently
             }
           }
           
           // Update Presentation selection - this will show category properties in the property grid
-          await Presentation.selection.replaceSelection("CategoryComponent", iModel, keySet);
+          Presentation.selection.replaceSelection("CategoryComponent", iModel, keySet);
           
           // Optionally also select elements within the categories for visualization
           try {
@@ -151,14 +147,14 @@ export function CategoryComponent() {
                 emphasize.emphasizeElements(elementIds, vp, undefined, true);
               }
             }
-          } catch (elementError) {
-            
+          } catch {
+            // Handle element selection errors silently
           }
           
         } else {
           // Clear all selections
           iModel.selectionSet.emptyAll();
-          await Presentation.selection.clearSelection("CategoryComponent", iModel);
+          Presentation.selection.clearSelection("CategoryComponent", iModel);
           
           // Clear emphasis
           const vp = IModelApp.viewManager.selectedView;
@@ -167,8 +163,7 @@ export function CategoryComponent() {
             emphasize.clearEmphasizedElements(vp);
           }
         }
-      } catch (error) {
-        console.error("Error updating category selection:", error);
+      } catch {
       }
     };
 
@@ -208,28 +203,27 @@ export function CategoryComponent() {
         backgroundColor: selectedCategoryIds.includes(category.id) ? "#f0f8ff" : "transparent"
       }}
     >
-      <Tooltip content={`Toggle category: ${category.label}`} placement="bottom">
-        <label 
-          htmlFor={category.id} 
-          style={{ 
-            cursor: "pointer", 
-            display: "flex", 
-            alignItems: "center", 
-            gap: "0.5rem",
-            width: "100%"
-          }}
-        >
-          <input
-            type="checkbox"
-            id={category.id}
-            name="category"
-            checked={selectedCategoryIds.includes(category.id)}
-            onChange={handleCategoryChange}
-            style={{ cursor: "pointer" }}
-          />
-          <span style={{ fontSize: "0.875rem" }}>{category.label}</span>
-        </label>
-      </Tooltip>
+      <label 
+        htmlFor={category.id} 
+        style={{ 
+          cursor: "pointer", 
+          display: "flex", 
+          alignItems: "center", 
+          gap: "0.5rem",
+          width: "100%"
+        }}
+        title={`Toggle category: ${category.label}`}
+      >
+        <input
+          type="checkbox"
+          id={category.id}
+          name="category"
+          checked={selectedCategoryIds.includes(category.id)}
+          onChange={handleCategoryChange}
+          style={{ cursor: "pointer" }}
+        />
+        <span style={{ fontSize: "0.875rem" }}>{category.label}</span>
+      </label>
     </li>
   ));
 
@@ -254,7 +248,7 @@ export function CategoryComponent() {
         gap="xs"
       >
         <Flex gap="xs" alignItems="center">
-          <SearchBox
+          <Input
             style={{ flex: 1 }}
             placeholder="Search Categories"
             value={searchString}

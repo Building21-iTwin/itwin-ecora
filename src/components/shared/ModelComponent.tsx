@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-deprecated */
 import { IModelApp } from "@itwin/core-frontend";
 import React, { useEffect, useState } from "react";
-import { Button, Flex, SearchBox, Tooltip } from "@itwin/itwinui-react";
+import { Button, Flex, Input } from "@itwin/itwinui-react";
 import { KeySet } from "@itwin/presentation-common";
 import { Presentation } from "@itwin/presentation-frontend";
 
@@ -66,8 +67,7 @@ export function ModelComponent({ onSelectionChange }: ModelComponentProps) {
         }));
         
         setModels(modelList);
-      } catch (error) {
-        
+      } catch {
         // Fallback query if the complex query fails
         try {
           const fallbackQuery = iModel.createQueryReader(`
@@ -82,10 +82,8 @@ export function ModelComponent({ onSelectionChange }: ModelComponentProps) {
             label: row.CodeValue || row[1] || `Model ${row.ECInstanceId || row[0]}`,
           }));
           
-           // Debug log
           setModels(fallbackModels);
-        } catch (fallbackError) {
-          
+        } catch {
           setModels([]);
         }
       }
@@ -117,12 +115,13 @@ export function ModelComponent({ onSelectionChange }: ModelComponentProps) {
                 className: "BisCore:PhysicalModel",
                 id: formattedModelId
               });
-            } catch (keySetError) {
+            } catch {
+              // Handle keySet errors silently
             }
           }
           
           // Update Presentation selection - this will show model properties in the property grid
-          await Presentation.selection.replaceSelection("ModelComponent", iModel, keySet);
+          Presentation.selection.replaceSelection("ModelComponent", iModel, keySet);
           
           // Optionally also select elements within the models for visualization
           try {
@@ -144,17 +143,18 @@ export function ModelComponent({ onSelectionChange }: ModelComponentProps) {
             
             // Notify parent component
             onSelectionChange?.(elementIds);
-          } catch (elementError) {
+          } catch {
             onSelectionChange?.(selectedModelIds);
           }
           
         } else {
           // Clear all selections
           iModel.selectionSet.emptyAll();
-          await Presentation.selection.clearSelection("ModelComponent", iModel);
+          Presentation.selection.clearSelection("ModelComponent", iModel);
           onSelectionChange?.([]);
         }
-      } catch (error) {
+      } catch {
+        // Handle selection errors silently
       }
     };
 
@@ -194,28 +194,27 @@ export function ModelComponent({ onSelectionChange }: ModelComponentProps) {
         backgroundColor: selectedModelIds.includes(model.id) ? "#f0f8ff" : "transparent"
       }}
     >
-      <Tooltip content={`Toggle model: ${model.label}`} placement="bottom">
-        <label 
-          htmlFor={model.id} 
-          style={{ 
-            cursor: "pointer", 
-            display: "flex", 
-            alignItems: "center", 
-            gap: "0.5rem",
-            width: "100%"
-          }}
-        >
-          <input
-            type="checkbox"
-            id={model.id}
-            name="model"
-            checked={selectedModelIds.includes(model.id)}
-            onChange={handleModelChange}
-            style={{ cursor: "pointer" }}
-          />
-          <span style={{ fontSize: "0.875rem" }}>{model.label}</span>
-        </label>
-      </Tooltip>
+      <label 
+        htmlFor={model.id} 
+        style={{ 
+          cursor: "pointer", 
+          display: "flex", 
+          alignItems: "center", 
+          gap: "0.5rem",
+          width: "100%"
+        }}
+        title={`Toggle model: ${model.label}`}
+      >
+        <input
+          type="checkbox"
+          id={model.id}
+          name="model"
+          checked={selectedModelIds.includes(model.id)}
+          onChange={handleModelChange}
+          style={{ cursor: "pointer" }}
+        />
+        <span style={{ fontSize: "0.875rem" }}>{model.label}</span>
+      </label>
     </li>
   ));
 
@@ -240,7 +239,7 @@ export function ModelComponent({ onSelectionChange }: ModelComponentProps) {
         gap="xs"
       >
         <Flex gap="xs" alignItems="center">
-          <SearchBox
+          <Input
             style={{ flex: 1 }}
             placeholder="Search Models"
             value={searchString}
