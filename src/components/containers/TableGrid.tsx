@@ -36,15 +36,6 @@ export interface TableProps {
 
   /** Component to be rendered if there are no rows to be rendered in the table. */
   noRowsState?: (() => React.ReactElement) | undefined;
-
-  /** Optional: Selected keys for filtering or highlighting rows. */
-  selectedKeys?: string[];
-
-  /** Optional: Selected category IDs for filtering or highlighting rows. */
-  selectedCategoryIds?: string[];
-
-  /** Optional: Selected model IDs for filtering or highlighting rows. */
-  selectedModelIds?: string[];
 }
 
 /**
@@ -52,20 +43,39 @@ export interface TableProps {
  * changes.
  */
 
-export function Table(props: TableProps) {
+export function Table({ iModel, width, height, loadingContentState, noContentState, noRowsState }: TableProps) {
+  React.useEffect(() => {
+    console.log("[TableGrid] MOUNTED");
+    return () => {
+      console.log("[TableGrid] UNMOUNTED");
+    };
+  }, []);
+
+  React.useEffect(() => {
+    console.log("[TableGrid] PROPS CHANGED", { iModel, width, height });
+  }, [iModel, width, height]);
+
+  console.log("[TableGrid] RENDER", { iModel, width, height });
+  console.log("[TableGrid] Using ruleset:", ruleSet);
+
   const { columns, rows, isLoading, loadMoreRows } =
     usePresentationTableWithUnifiedSelection({
-      imodel: props.iModel,
+      imodel: iModel,
       ruleset: ruleSet,
       pageSize: 20,
       columnMapper: mapColumns,
       rowMapper: mapRows,
     });
 
+  React.useEffect(() => {
+    console.log("[TableGrid] columns:", columns);
+    console.log("[TableGrid] rows:", rows);
+  }, [columns, rows]);
+
   if (columns === undefined) {
     return (
-      props.loadingContentState?.() ?? (
-        <CenteredContent width={props.width} height={props.height}>
+      loadingContentState?.() ?? (
+        <CenteredContent width={width} height={height}>
           <ProgressRadial size="large" indeterminate={true} />
           Loading table content...
         </CenteredContent>
@@ -75,8 +85,8 @@ export function Table(props: TableProps) {
 
   if (columns.length === 0) {
     return (
-      props.noContentState?.() ?? (
-        <CenteredContent width={props.width} height={props.height}>
+      noContentState?.() ?? (
+        <CenteredContent width={width} height={height}>
           There is no content for current selection.
         </CenteredContent>
       )
@@ -88,7 +98,7 @@ export function Table(props: TableProps) {
       columns={columns}
       data={rows}
       enableVirtualization={true}
-      emptyTableContent={props.noRowsState?.() ?? <>No rows.</>}
+      emptyTableContent={noRowsState?.() ?? <>No rows.</>}
       onBottomReached={loadMoreRows}
       isLoading={isLoading}
       density="extra-condensed"

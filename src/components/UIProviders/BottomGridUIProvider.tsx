@@ -16,6 +16,7 @@ export class BottomGridUIProvider implements UiItemsProvider {
     location: StagePanelLocation,
     section?: StagePanelSection
   ): ReadonlyArray<Widget> {
+    console.log("[BottomGridUIProvider] provideWidgets", { stageUsage, location, section });
     const widgets: Widget[] = [];
     if (
       stageUsage === StageUsage.General.toString() &&
