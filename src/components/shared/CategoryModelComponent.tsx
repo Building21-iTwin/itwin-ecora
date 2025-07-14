@@ -21,7 +21,7 @@ export function CategoryModelComponent({
         selectionName="ModelComponent"
         elementQuery={(ids: string[]) =>
           `SELECT ECInstanceId FROM bis.GeometricElement3d WHERE Model.Id IN (${ids
-            .map((id: string) => `'${id}'`)
+            .map((id: string) => `${id}`)
             .join(",")}) LIMIT 1000`
         }
         onSelectionChange={onSelectionChange}
@@ -40,7 +40,7 @@ export function CategoryModelComponent({
       selectionName="CategoryComponent"
       elementQuery={(ids: string[]) =>
         `SELECT ECInstanceId FROM bis.GeometricElement3d WHERE Category.Id IN (${ids
-          .map((id: string) => `'${id}'`)
+          .map((id: string) => `${id}`)
           .join(",")}) LIMIT 1000`
       }
       onSelectionChange={onSelectionChange}
