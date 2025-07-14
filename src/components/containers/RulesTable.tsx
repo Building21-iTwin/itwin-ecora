@@ -13,21 +13,17 @@ import { useActiveIModelConnection } from "@itwin/appui-react";
  * automatically if the active iModel changes.
  */
 const RulesTable: React.FC = () => {
-  // Log every render for debugging
-  console.log("[RulesTable] RENDER");
-
   // Get the current active iModel connection from the iTwin UI framework
   // This hook will update the component when the iModel becomes available or changes
   const iModel = useActiveIModelConnection();
 
   // Log whenever the iModel changes (for debugging and development)
   React.useEffect(() => {
-    console.log("[RulesTable] iModel changed:", iModel);
+    // Removed console.log for lint compliance
   }, [iModel]);
 
-  // If there is no iModel yet, show a placeholder and log the state
+  // If there is no iModel yet, show a placeholder
   if (!iModel) {
-    console.log("[RulesTable] No iModel selected");
     return (
       <div>
         <span>No iModel selected</span>
@@ -52,7 +48,6 @@ const RulesTable: React.FC = () => {
  * Logs the error and provides a refresh button for the user.
  */
 function ResetPage(props: { error: Error; resetErrorBoundary: () => void }) {
-  console.log("[RulesTable] ErrorBoundary fallback", props.error);
   return (
     <div style={{ textAlign: "center", padding: "20px" }}>
       <p style={{ color: "red" }}>

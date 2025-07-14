@@ -45,18 +45,12 @@ export interface TableProps {
 
 export function Table({ iModel, width, height, loadingContentState, noContentState, noRowsState }: TableProps) {
   React.useEffect(() => {
-    console.log("[TableGrid] MOUNTED");
     return () => {
-      console.log("[TableGrid] UNMOUNTED");
     };
   }, []);
 
   React.useEffect(() => {
-    console.log("[TableGrid] PROPS CHANGED", { iModel, width, height });
   }, [iModel, width, height]);
-
-  console.log("[TableGrid] RENDER", { iModel, width, height });
-  console.log("[TableGrid] Using ruleset:", ruleSet);
 
   const { columns, rows, isLoading, loadMoreRows } =
     usePresentationTableWithUnifiedSelection({
@@ -68,8 +62,6 @@ export function Table({ iModel, width, height, loadingContentState, noContentSta
     });
 
   React.useEffect(() => {
-    console.log("[TableGrid] columns:", columns);
-    console.log("[TableGrid] rows:", rows);
   }, [columns, rows]);
 
   if (columns === undefined) {
