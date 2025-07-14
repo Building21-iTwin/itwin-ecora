@@ -9,7 +9,7 @@ import { AuthorizationState, useAuthorizationContext } from "../Authorization";
 import { Viewer } from "./Viewer";
 import { ProgressLinear } from "@itwin/itwinui-react";
 import { SelectionProvider } from "./shared/SelectionContext";
-import { categoryModelSelection } from "./utils/categoryModelSelection"; 
+import { categoryModelSelection } from "./utils/CategoryModelSelection";
 
 export interface CategoryModelContextType {
   selectedModelIds: string[];
