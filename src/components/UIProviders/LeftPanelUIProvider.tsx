@@ -5,8 +5,7 @@ import {
   type UiItemsProvider,
   type Widget,
 } from "@itwin/appui-react";
-import { CategoryComponent } from "../shared/CategoryComponent";
-import { ModelComponent } from "../shared/ModelComponent";
+import { CategoryModelComponent } from "../shared/CategoryModelComponent";
 
 
 export class LeftPanelUIProvider implements UiItemsProvider {
@@ -27,14 +26,14 @@ export class LeftPanelUIProvider implements UiItemsProvider {
       const firstWidget: Widget = {
         id: "FirstWidget",
         label: "Category",
-        content: <CategoryComponent />,
+        content: <CategoryModelComponent type="category" />,
       };
       widgets.push(firstWidget);
 
       const secondWidget: Widget = {
         id: "SecondWidget",
         label: "Models",
-        content: <ModelComponent />,
+        content: <CategoryModelComponent type="model" />,
       };
       widgets.push(secondWidget);
 
@@ -42,4 +41,4 @@ export class LeftPanelUIProvider implements UiItemsProvider {
     }
     return [];
   }
-}   
+}

@@ -4,11 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import "./App.css";
-import { type ComponentProps, createContext, useState } from "react";
+import { type ComponentProps, createContext, useContext, useEffect, useState } from "react";
 import { AuthorizationState, useAuthorizationContext } from "../Authorization";
 import { Viewer } from "./Viewer";
 import { ProgressLinear } from "@itwin/itwinui-react";
 import { SelectionProvider } from "./shared/SelectionContext";
+import { categoryModelSelection } from "./utils/categoryModelSelection"; 
 
 export interface CategoryModelContextType {
   selectedModelIds: string[];
@@ -25,6 +26,26 @@ export const CategoryModelContext = createContext<CategoryModelContextType>({
   setSelectedCategoryIds: () => {},
   querySelectionContext: "",
 });
+
+// Effect component to sync selection/emphasis
+function CategoryModelSelectionEffect() {
+  const {
+    selectedModelIds,
+    selectedCategoryIds,
+    querySelectionContext,
+  } = useContext(CategoryModelContext);
+
+  useEffect(() => {
+    // Use the shared selection/emphasis utility whenever selection changes
+    void categoryModelSelection(
+      selectedCategoryIds,
+      selectedModelIds,
+      querySelectionContext || "SELECT ECInstanceId, ClassName FROM bis.GeometricElement3d WHERE "
+    );
+  }, [selectedCategoryIds, selectedModelIds, querySelectionContext]);
+
+  return null;
+}
 
 export function App(props: ComponentProps<typeof Viewer>) {
   const { state } = useAuthorizationContext();
@@ -44,6 +65,7 @@ export function App(props: ComponentProps<typeof Viewer>) {
   return (
     <SelectionProvider>
       <CategoryModelContext.Provider value={contextValue}>
+        <CategoryModelSelectionEffect />
         <div className="viewer-container">
           {state === AuthorizationState.Pending ? (
             <Loader />
