@@ -1,4 +1,7 @@
 /* eslint-disable no-duplicate-imports */
+/**
+ * This is the component that renders a table at the bottom for description grid.
+ */
 /*---------------------------------------------------------------------------------------------
  * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
  * See LICENSE.md in the project root for license terms and full copyright notice.
@@ -52,14 +55,46 @@ export function Table({ iModel, width, height, loadingContentState, noContentSta
   React.useEffect(() => {
   }, [iModel, width, height]);
 
+
   const { columns, rows, isLoading, loadMoreRows } =
     usePresentationTableWithUnifiedSelection({
       imodel: iModel,
       ruleset: ruleSet,
-      pageSize: 20,
+      pageSize: 1000, // Show up to 1000 elements at once
       columnMapper: mapColumns,
       rowMapper: mapRows,
     });
+
+  // Counter for number of elements (rows)
+  const elementCount = rows ? rows.length : 0;
+
+  // Track total count of available elements (even if not all are loaded)
+  const [totalCount, setTotalCount] = React.useState<number | null>(null);
+  React.useEffect(() => {
+    let cancelled = false;
+    async function fetchTotalCount() {
+      if (!iModel) {
+        setTotalCount(null);
+        return;
+      }
+      try {
+        // This query should match the ruleset's selection logic for the table
+        // For most use cases, this will be the count of selected node instances
+        const query = `SELECT COUNT(*) as count FROM bis.GeometricElement3d WHERE ECInstanceId IN (SELECT ECInstanceId FROM bis.GeometricElement3d)`;
+        const reader = iModel.createQueryReader(query);
+        const countRows = await reader.toArray();
+        if (!cancelled && countRows && countRows[0] && typeof countRows[0].count === "number") {
+          setTotalCount(countRows[0].count);
+        } else if (!cancelled) {
+          setTotalCount(null);
+        }
+      } catch {
+        if (!cancelled) setTotalCount(null);
+      }
+    }
+    void fetchTotalCount();
+    return () => { cancelled = true; };
+  }, [iModel]);
 
   React.useEffect(() => {
   }, [columns, rows]);
@@ -86,17 +121,24 @@ export function Table({ iModel, width, height, loadingContentState, noContentSta
   }
 
   return (
-    <UiTable
-      columns={columns}
-      data={rows}
-      enableVirtualization={true}
-      emptyTableContent={noRowsState?.() ?? <>No rows.</>}
-      onBottomReached={loadMoreRows}
-      isLoading={isLoading}
-      density="extra-condensed"
-      styleType="zebra-rows"
-      style={{ width: "100%", height: "100%" }}
-    />
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
+      <div style={{ padding: "0.5rem", fontWeight: 500, fontSize: "0.95rem", color: "#333" }}>
+        Showing {elementCount} of {totalCount !== null ? totalCount : "..."} element{(totalCount === 1 || elementCount === 1) ? "" : "s"}
+      </div>
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <UiTable
+          columns={columns}
+          data={rows}
+          enableVirtualization={true}
+          emptyTableContent={noRowsState?.() ?? <>No rows.</>}
+          onBottomReached={loadMoreRows}
+          isLoading={isLoading}
+          density="extra-condensed"
+          styleType="zebra-rows"
+          style={{ width: "100%", height: "100%" }}
+        />
+      </div>
+    </div>
   );
 }
 
