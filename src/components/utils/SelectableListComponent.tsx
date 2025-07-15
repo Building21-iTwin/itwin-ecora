@@ -22,25 +22,29 @@ interface SelectableListProps {
   idKey: string;
   className: string;
   selectionName: string;
-  elementQuery?: (ids: string[]) => string;
+  elementQuery?: (ids: string[], filterIds?: string[]) => string;
   onSelectionChange?: (elementIds: string[]) => void;
   placeholder?: string;
+  selectedIds: string[];
+  setSelectedIds: (ids: string[]) => void;
+  filterIds?: string[];
 }
-
-export function SelectableListComponent({
-  query,
-  labelKey,
-  idKey,
-  className,
-  selectionName,
-  elementQuery,
-  onSelectionChange,
-  placeholder = "Search...",
-}: SelectableListProps) {
+export function SelectableListComponent(props: SelectableListProps) {
+  const {
+    query,
+    labelKey,
+    idKey,
+    className,
+    selectionName,
+    elementQuery,
+    onSelectionChange,
+    placeholder = "Search...",
+    selectedIds,
+    setSelectedIds,
+    filterIds,
+  } = props;
   // List of items to display (id/label pairs)
   const [items, setItems] = useState<{ id: string; label: string }[]>([]);
-  // Currently selected item ids
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   // Search filter string
   const [searchString, setSearchString] = useState<string>("");
   // Current iModel reference (updates on viewport change)
@@ -61,7 +65,7 @@ export function SelectableListComponent({
     return () => {
       IModelApp.viewManager.onSelectedViewportChanged.removeListener(updateIModel);
     };
-  }, []);
+  }, [setSelectedIds]);
 
   // Fetch items from ECSQL query whenever iModel or query changes
   useEffect(() => {
@@ -89,12 +93,10 @@ export function SelectableListComponent({
   // Update iModel and Presentation selection when selectedIds changes
   useEffect(() => {
     if (!iModel) return;
+    let cancelled = false;
     const updateSelection = async () => {
       try {
-        // Special case: category/model combined selection handled elsewhere
-        if (selectionName === "category/model" && typeof window !== "undefined") {
-        } else if (selectedIds.length > 0) {
-          // Standard selection: update iModel selection set and Presentation selection
+        if (selectedIds.length > 0) {
           iModel.selectionSet.emptyAll();
           const keySet = new KeySet();
           for (const id of selectedIds) {
@@ -103,12 +105,12 @@ export function SelectableListComponent({
             } catch {}
           }
           Presentation.selection.replaceSelection(selectionName, iModel, keySet);
-          // If elementQuery is provided, select related elements (e.g., all elements in selected categories)
           if (elementQuery) {
             try {
-              const queryStr = elementQuery(selectedIds);
+              const queryStr = elementQuery(selectedIds, filterIds);
               const queryReader = iModel.createQueryReader(queryStr);
               const elements = await queryReader.toArray();
+              if (cancelled) return;
               const elementIds = elements.map((row: any) => row.ECInstanceId || row[0]);
               if (elementIds.length > 0) {
                 iModel.selectionSet.replace(elementIds);
@@ -121,7 +123,6 @@ export function SelectableListComponent({
             onSelectionChange?.(selectedIds);
           }
         } else {
-          // No selection: clear everything
           iModel.selectionSet.emptyAll();
           Presentation.selection.clearSelection(selectionName, iModel);
           onSelectionChange?.([]);
@@ -129,7 +130,10 @@ export function SelectableListComponent({
       } catch {}
     };
     void updateSelection();
-  }, [selectedIds, iModel, className, selectionName, elementQuery, onSelectionChange]);
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedIds, filterIds, iModel, className, selectionName, elementQuery, onSelectionChange]);
 
   // Handle checkbox toggle for an item
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
