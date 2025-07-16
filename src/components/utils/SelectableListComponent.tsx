@@ -69,14 +69,16 @@ export function SelectableListComponent(props: SelectableListProps) {
 
   // Fetch items from ECSQL query whenever iModel or query changes
   useEffect(() => {
+    let cancelled = false;
     const getItems = async () => {
       if (!iModel) {
-        setItems([]);
+        if (!cancelled) setItems([]);
         return;
       }
       try {
         const queryReader = iModel.createQueryReader(query);
         const rows = await queryReader.toArray();
+        if (cancelled) return;
         // Map rows to {id, label} objects for display
         const list = rows.map((row: any) => ({
           id: row[idKey] || row[0],
@@ -84,10 +86,13 @@ export function SelectableListComponent(props: SelectableListProps) {
         }));
         setItems(list);
       } catch {
-        setItems([]);
+        if (!cancelled) setItems([]);
       }
     };
     void getItems();
+    return () => {
+      cancelled = true;
+    };
   }, [iModel, query, idKey, labelKey, className]);
 
   // Update iModel and Presentation selection when selectedIds changes
