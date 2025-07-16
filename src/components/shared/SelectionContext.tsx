@@ -1,6 +1,13 @@
 import { createContext, type ReactNode, useContext, useState } from "react";
+import type { Field } from "@itwin/presentation-common";
 
-// Define the shape of your selection state here
+// Define table filter type
+export interface TableFilter {
+  id: string;
+  value: string;
+  field?: Field;
+}
+
 export interface SelectionState {
   selectedKeys: string[];
   setSelectedKeys: (keys: string[]) => void;
@@ -8,6 +15,11 @@ export interface SelectionState {
   setSelectedCategoryIds: (ids: string[]) => void;
   selectedModelIds: string[];
   setSelectedModelIds: (ids: string[]) => void;
+  // Table filtering functionality
+  tableFilters: TableFilter[];
+  setTableFilters: (filters: TableFilter[]) => void;
+  availableFields: Field[];
+  setAvailableFields: (fields: Field[]) => void;
 }
 
 const SelectionContext = createContext<SelectionState | undefined>(undefined);
@@ -16,6 +28,8 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
+  const [tableFilters, setTableFilters] = useState<TableFilter[]>([]);
+  const [availableFields, setAvailableFields] = useState<Field[]>([]);
 
   return (
     <SelectionContext.Provider
@@ -26,6 +40,10 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
         setSelectedCategoryIds,
         selectedModelIds,
         setSelectedModelIds,
+        tableFilters,
+        setTableFilters,
+        availableFields,
+        setAvailableFields,
       }}
     >
       {children}

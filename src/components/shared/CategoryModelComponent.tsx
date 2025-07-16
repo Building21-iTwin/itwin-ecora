@@ -19,6 +19,10 @@ export function CategoryModelComponent({
     setSelectedCategoryIds,
   } = useSelection();
 
+
+//note: we may want to have a single element query function that can handle both models and categories
+// Note: This will help if we need to add another thing to a selectable list in the future
+
   if (type === "model") {
     return (
       <SelectableListComponent
@@ -33,9 +37,9 @@ export function CategoryModelComponent({
         elementQuery={(modelIds: string[], categoryIds?: string[]) => {
           if (categoryIds && categoryIds.length > 0) {
             // AND filter: both model and category
-            return `SELECT ECInstanceId FROM bis.GeometricElement3d WHERE Model.Id IN (${modelIds.map((id) => `${id}`).join(",")}) AND Category.Id IN (${categoryIds.map((id) => `${id}`).join(",")}) LIMIT 1000`;
+            return `SELECT ECInstanceId FROM bis.GeometricElement3d WHERE Model.Id IN (${modelIds.map((id) => `${id}`).join(",")}) AND Category.Id IN (${categoryIds.map((id) => `${id}`).join(",")}) `;
           }
-          return `SELECT ECInstanceId FROM bis.GeometricElement3d WHERE Model.Id IN (${modelIds.map((id) => `${id}`).join(",")}) LIMIT 1000`;
+          return `SELECT ECInstanceId FROM bis.GeometricElement3d WHERE Model.Id IN (${modelIds.map((id) => `${id}`).join(",")}) `;
         }}
         onSelectionChange={onSelectionChange}
         placeholder="Search Models"
@@ -57,9 +61,9 @@ export function CategoryModelComponent({
       elementQuery={(categoryIds: string[], modelIds?: string[]) => {
         if (modelIds && modelIds.length > 0) {
           // AND filter: both category and model
-          return `SELECT ECInstanceId FROM bis.GeometricElement3d WHERE Category.Id IN (${categoryIds.map((id) => `${id}`).join(",")}) AND Model.Id IN (${modelIds.map((id) => `${id}`).join(",")}) LIMIT 1000`;
+          return `SELECT ECInstanceId FROM bis.GeometricElement3d WHERE Category.Id IN (${categoryIds.map((id) => `${id}`).join(",")}) AND Model.Id IN (${modelIds.map((id) => `${id}`).join(",")}) `;
         }
-        return `SELECT ECInstanceId FROM bis.GeometricElement3d WHERE Category.Id IN (${categoryIds.map((id) => `${id}`).join(",")}) LIMIT 1000`;
+        return `SELECT ECInstanceId FROM bis.GeometricElement3d WHERE Category.Id IN (${categoryIds.map((id) => `${id}`).join(",")}) `;
       }}
       onSelectionChange={onSelectionChange}
       placeholder="Search Categories"
