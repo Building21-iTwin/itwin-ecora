@@ -30,6 +30,7 @@ interface SelectableListProps {
   filterIds?: string[];
 }
 export function SelectableListComponent(props: SelectableListProps) {
+  
   const {
     query,
     labelKey,
@@ -45,6 +46,7 @@ export function SelectableListComponent(props: SelectableListProps) {
   } = props;
   // List of items to display (id/label pairs)
   const [items, setItems] = useState<{ id: string; label: string }[]>([]);
+  
   // Search filter string
   const [searchString, setSearchString] = useState<string>("");
   // Current iModel reference (updates on viewport change)
@@ -57,7 +59,9 @@ export function SelectableListComponent(props: SelectableListProps) {
       setIModel(newIModel);
       if (!newIModel) {
         setItems([]);
-        setSelectedIds([]);
+        if (selectedIds.length > 0) {
+          setSelectedIds([]);
+        }
       }
     };
     IModelApp.viewManager.onSelectedViewportChanged.addListener(updateIModel);
@@ -65,7 +69,8 @@ export function SelectableListComponent(props: SelectableListProps) {
     return () => {
       IModelApp.viewManager.onSelectedViewportChanged.removeListener(updateIModel);
     };
-  }, [setSelectedIds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fetch items from ECSQL query whenever iModel or query changes
   useEffect(() => {
@@ -97,12 +102,28 @@ export function SelectableListComponent(props: SelectableListProps) {
 
   // Update iModel and Presentation selection when selectedIds changes
   useEffect(() => {
-    if (!iModel) return;
+    if (!iModel) {
+      return;
+    }
     let cancelled = false;
     const updateSelection = async () => {
       try {
+        // Get current selection from iModel.selectionSet
+
+        const currentSelection = Array.from(iModel.selectionSet.elements);
+        // Compare as sets, not arrays, to avoid order issues
+        const currentSet = new Set(currentSelection);
+        const selectedSet = new Set(selectedIds);
+        const isSameSelection =
+          currentSet.size === selectedSet.size &&
+          Array.from(currentSet).every((id) => selectedSet.has(id));
+
+        if (isSameSelection) {
+          // Selection is already up to date, skip update
+          return;
+        }
+
         if (selectedIds.length > 0) {
-          iModel.selectionSet.emptyAll();
           const keySet = new KeySet();
           for (const id of selectedIds) {
             try {
@@ -128,11 +149,17 @@ export function SelectableListComponent(props: SelectableListProps) {
             onSelectionChange?.(selectedIds);
           }
         } else {
+          // Only clear selection if both current selection and selectedIds are empty
+          if (currentSelection.length > 0 || selectedIds.length > 0) {
+            // Don't clear if something is selected
+            return;
+          }
           iModel.selectionSet.emptyAll();
           Presentation.selection.clearSelection(selectionName, iModel);
           onSelectionChange?.([]);
         }
-      } catch {}
+      } catch {
+      }
     };
     void updateSelection();
     return () => {
@@ -152,7 +179,9 @@ export function SelectableListComponent(props: SelectableListProps) {
 
   // Clear all selections
   const handleClearAll = () => {
-    setSelectedIds([]);
+    if (selectedIds.length > 0) {
+      setSelectedIds([]);
+    }
   };
 
   // Filter items by search string (case-insensitive)
