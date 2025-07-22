@@ -8,6 +8,7 @@
  *--------------------------------------------------------------------------------------------*/
 import * as React from "react";
 import { PropertyRecord } from "@itwin/appui-abstract";
+import { PropertyValueFormat } from "@itwin/appui-abstract";
 import { IModelConnection } from "@itwin/core-frontend";
 import { Flex, ProgressRadial, Text, Table as UiTable } from "@itwin/itwinui-react";
 import type { Ruleset } from "@itwin/presentation-common";
@@ -63,13 +64,26 @@ export function Table({ iModel, width, height, loadingContentState, noContentSta
       rowMapper: mapRows,
     });
 
+  // Filter rows based on tableFilters
+  const filteredRows = React.useMemo(() => {
+    if (!rows || tableFilters.length === 0) return rows;
+    return rows.filter(row => {
+      return tableFilters.every(filter => {
+        const cell = row[filter.id];
+        // Only filter primitive string values
+        if (!cell || cell.value.valueFormat !== PropertyValueFormat.Primitive) return true;
+        const primitiveValue = (cell.value as { value: unknown }).value;
+        if (typeof primitiveValue !== "string") return true;
+        return primitiveValue.toLowerCase().includes(filter.value.toLowerCase());
+      });
+    });
+  }, [rows, tableFilters]);
 
   // Enhanced loading state that accounts for filter application
   const isTableLoading = isLoading || isApplyingFilters;
 
   // Counter for number of elements (rows)
-  // const displayCount = filteredRows ? filteredRows.length : 0;
-  const totalCount = rows ? rows.length : 0;
+  const totalCount = filteredRows ? filteredRows.length : 0;
 
   if (columns === undefined) {
     return (
@@ -117,7 +131,7 @@ export function Table({ iModel, width, height, loadingContentState, noContentSta
       <div style={{ flex: 1, minHeight: 0 }}>
         <UiTable
           columns={columns}
-          data={rows}
+          data={filteredRows}
           enableVirtualization={true}
           emptyTableContent={
             tableFilters.length > 0 ? 
