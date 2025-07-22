@@ -145,7 +145,6 @@ export function ColumnFilter({ columnId, columnLabel, field, placeholder }: Tabl
       </IconButton>
     </Popover>
   );
-// ...existing code...
 }
 
 // Component to show active filters summary

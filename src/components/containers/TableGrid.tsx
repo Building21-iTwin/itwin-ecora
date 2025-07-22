@@ -22,7 +22,7 @@ import type {
 import { CenteredContent } from "../UIProviders/CenteredContext";
 import { useSelection } from "../shared/SelectionContext";
 import { ActiveFiltersDisplay, ColumnFilter } from "./TableFilter";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 
 export interface TableProps {
   /** Width of the property grid element. */
@@ -50,62 +50,9 @@ export interface TableProps {
  */
 
 export function Table({ iModel, width, height, loadingContentState, noContentState, noRowsState }: TableProps) {
-  const { tableFilters, availableFields, setAvailableFields } = useSelection();
-  const [filteredRuleset, setFilteredRuleset] = useState<Ruleset>(ruleSet);
-  const [isApplyingFilters, setIsApplyingFilters] = useState(false);
-
-  // Create filtered ruleset based on active filters
-  const createFilteredRuleset = useCallback((filters: typeof tableFilters): Ruleset => {
-    if (filters.length === 0) {
-      return ruleSet;
-    }
-
-    // Build WHERE clause for filters
-    const whereConditions: string[] = [];
-    filters.forEach((filter) => {
-      if (filter.field?.isPropertiesField()) {
-        const property = filter.field.properties[0]?.property;
-        if (property && property.type === "string") {
-          // Escape single quotes in filter value
-          const escapedValue = filter.value.replace(/'/g, "''");
-          whereConditions.push(`e.$->${property.name} LIKE '%${escapedValue}%'`);
-        }
-      }
-    });
-
-    if (whereConditions.length === 0) {
-      return ruleSet;
-    }
-
-    // Clone the ruleset and inject the WHERE clause into the specification
-    const filteredRuleSet = JSON.parse(JSON.stringify(ruleSet));
-    if (filteredRuleSet && filteredRuleSet[0] && filteredRuleSet[0].specifications && filteredRuleSet[0].specifications[0]) {
-      // Only works for a single specification (simple case)
-      filteredRuleSet[0].specifications[0].query =
-        filteredRuleSet[0].specifications[0].query.replace(
-          /WHERE[\s\S]*?(ORDER BY|$)/i,
-          (_: string, orderBy: string) => {
-            // Remove existing WHERE, add new WHERE
-            return `WHERE ${whereConditions.join(" AND ")} ${orderBy || ''}`;
-          }
-        );
-    }
-    return filteredRuleSet;
-  }, []);
-
-  // Update ruleset when filters change
-  useEffect(() => {
-    setIsApplyingFilters(true);
-    const newRuleset = createFilteredRuleset(tableFilters);
-    setFilteredRuleset(newRuleset);
-    
-    // Loading screen
-    const timer = setTimeout(() => {
-      setIsApplyingFilters(false);
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, [tableFilters, createFilteredRuleset]);
+  const { tableFilters } = useSelection();
+  const [filteredRuleset] = useState<Ruleset>(ruleSet);
+  const [isApplyingFilters] = useState(false);
 
   const { columns, rows, isLoading, loadMoreRows } =
     usePresentationTableWithUnifiedSelection({
@@ -116,50 +63,12 @@ export function Table({ iModel, width, height, loadingContentState, noContentSta
       rowMapper: mapRows,
     });
 
-  // Update available fields when columns change
-  useEffect(() => {
-    if (columns) {
-      const fields = columns.map(column => column.field).filter(Boolean);
-      if (fields.length !== availableFields.length) {
-        setAvailableFields(fields);
-      }
-    }
-  }, [columns, availableFields.length, setAvailableFields]);
 
   // Enhanced loading state that accounts for filter application
   const isTableLoading = isLoading || isApplyingFilters;
 
-  // Apply client-side filtering if filters are active
-  const filteredRows = useMemo(() => {
-    if (tableFilters.length === 0) {
-      return rows;
-    }
-
-    return rows.filter(row => {
-      return tableFilters.every(filter => {
-        const cellValue = row[filter.id];
-        if (!cellValue || !cellValue.value) {
-          return false;
-        }
-
-        // Extract display value from PropertyRecord
-        let displayValue = "";
-        if (cellValue.value !== undefined && cellValue.value !== null) {
-          if (typeof cellValue.value === "string" || typeof cellValue.value === "number") {
-            displayValue = String(cellValue.value);
-          } else if (cellValue.value && typeof cellValue.value === "object" && "displayValue" in cellValue.value) {
-            displayValue = String((cellValue.value as any).displayValue);
-          } else {
-            displayValue = JSON.stringify(cellValue.value);
-          }
-        }
-        return displayValue.toLowerCase().includes(filter.value.toLowerCase());
-      });
-    });
-  }, [rows, tableFilters]);
-
   // Counter for number of elements (rows)
-  const displayCount = filteredRows ? filteredRows.length : 0;
+  // const displayCount = filteredRows ? filteredRows.length : 0;
   const totalCount = rows ? rows.length : 0;
 
   if (columns === undefined) {
@@ -196,13 +105,8 @@ export function Table({ iModel, width, height, loadingContentState, noContentSta
       <div style={{ padding: "0.5rem", fontWeight: 500, fontSize: "0.95rem", color: "#333" }}>
         <Flex alignItems="center" gap="sm">
           <Text>
-            Showing {displayCount} of {totalCount} element{totalCount === 1 ? "" : "s"}
+            Showing  {totalCount} element{totalCount === 1 ? "" : "s"}
           </Text>
-          {tableFilters.length > 0 && displayCount !== totalCount && (
-            <Text variant="small" style={{ color: "#666" }}>
-              (filtered)
-            </Text>
-          )}
           {isApplyingFilters && (
             <ProgressRadial size="small" indeterminate={true} />
           )}
@@ -213,7 +117,7 @@ export function Table({ iModel, width, height, loadingContentState, noContentSta
       <div style={{ flex: 1, minHeight: 0 }}>
         <UiTable
           columns={columns}
-          data={filteredRows}
+          data={rows}
           enableVirtualization={true}
           emptyTableContent={
             tableFilters.length > 0 ? 

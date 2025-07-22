@@ -1,5 +1,9 @@
+/* eslint-disable @typescript-eslint/no-deprecated */
 import { createContext, type ReactNode, useContext, useState } from "react";
-import type { Field } from "@itwin/presentation-common";
+import { type Field, type Keys, KeySet } from "@itwin/presentation-common";
+import { Presentation } from "@itwin/presentation-frontend";
+import { IModelApp } from "@itwin/core-frontend";
+import { QueryRowFormat } from "@itwin/core-common";
 
 // Define table filter type
 export interface TableFilter {
@@ -24,6 +28,20 @@ export interface SelectionState {
 
 const SelectionContext = createContext<SelectionState | undefined>(undefined);
 
+// Moved elementQuery outside the component to avoid recreation on every render
+const elementQuery = (modelIds: string[], categoryIds: string[]) => {
+  let query = "SELECT ec_classname(ECClassId) as className, ECInstanceId as id FROM bis.GeometricElement3d WHERE ";
+  const criteria: string[] = [];
+  if (modelIds.length > 0) {
+    criteria.push(`Model.Id IN (${modelIds.map((id) => `${id}`).join(",")})`);
+  }
+  if (categoryIds.length > 0) {
+    criteria.push(`Category.Id IN (${categoryIds.map((id) => `${id}`).join(",")})`);
+  }
+  query += criteria.join(" AND ");
+  return query;
+}
+
 export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
@@ -31,15 +49,48 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   const [tableFilters, setTableFilters] = useState<TableFilter[]>([]);
   const [availableFields, setAvailableFields] = useState<Field[]>([]);
 
+  const updateSelectedElements = async (modelIds: string[], categoryIds: string[]) => {
+    const iModel = IModelApp.viewManager.selectedView?.iModel;
+    if (!iModel) return;
+
+    
+    const query = elementQuery(modelIds, categoryIds);
+    const queryReader = iModel.createQueryReader(query, undefined, { rowFormat: QueryRowFormat.UseECSqlPropertyNames});
+    const elements = await queryReader.toArray();
+    const keySet = new KeySet(elements as Keys);
+
+    Presentation.selection.replaceSelection("My Selection", iModel, keySet);
+
+    // Emphasize all selected elements
+    const vp = IModelApp.viewManager.selectedView;
+    if (vp) {
+      // Dynamically import EmphasizeElements
+      const { EmphasizeElements } = await import("@itwin/core-frontend");
+      const emphasize = EmphasizeElements.getOrCreate(vp);
+      emphasize.clearEmphasizedElements(vp);
+      emphasize.emphasizeElements(elements.map((el: any) => el.id), vp, undefined, true);
+    }
+  }
+
+  const onSelectedCategoryIdsChange = (categoryIds: string[]) => {
+    setSelectedCategoryIds(categoryIds);
+    void updateSelectedElements(selectedModelIds, categoryIds);
+  }
+
+  const onSelectedModelIdsChange = (modelIds: string[]) => {
+    setSelectedModelIds(modelIds);
+    void updateSelectedElements(modelIds, selectedCategoryIds);
+  };
+
   return (
     <SelectionContext.Provider
       value={{
         selectedKeys,
         setSelectedKeys,
         selectedCategoryIds,
-        setSelectedCategoryIds,
+        setSelectedCategoryIds: onSelectedCategoryIdsChange,
         selectedModelIds,
-        setSelectedModelIds,
+        setSelectedModelIds: onSelectedModelIdsChange,
         tableFilters,
         setTableFilters,
         availableFields,

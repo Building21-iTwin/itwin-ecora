@@ -5,12 +5,10 @@ type ComponentType = "model" | "category";
 
 interface CategoryModelComponentProps {
   type: ComponentType;
-  onSelectionChange?: (elementIds: string[]) => void;
 }
 
 export function CategoryModelComponent({
   type,
-  onSelectionChange,
 }: CategoryModelComponentProps) {
   const {
     selectedModelIds,
@@ -20,8 +18,6 @@ export function CategoryModelComponent({
   } = useSelection();
 
 
-//note: we may want to have a single element query function that can handle both models and categories
-// Note: This will help if we need to add another thing to a selectable list in the future
 
   if (type === "model") {
     return (
@@ -30,18 +26,8 @@ export function CategoryModelComponent({
         labelKey="label"
         idKey="ECInstanceId"
         className="BisCore:PhysicalModel"
-        selectionName="ModelComponent"
         selectedIds={selectedModelIds}
         setSelectedIds={setSelectedModelIds}
-        filterIds={selectedCategoryIds}
-        elementQuery={(modelIds: string[], categoryIds?: string[]) => {
-          if (categoryIds && categoryIds.length > 0) {
-            // AND filter: both model and category
-            return `SELECT ECInstanceId FROM bis.GeometricElement3d WHERE Model.Id IN (${modelIds.map((id) => `${id}`).join(",")}) AND Category.Id IN (${categoryIds.map((id) => `${id}`).join(",")}) `;
-          }
-          return `SELECT ECInstanceId FROM bis.GeometricElement3d WHERE Model.Id IN (${modelIds.map((id) => `${id}`).join(",")}) `;
-        }}
-        onSelectionChange={onSelectionChange}
         placeholder="Search Models"
       />
     );
@@ -54,18 +40,8 @@ export function CategoryModelComponent({
       labelKey="label"
       idKey="ECInstanceId"
       className="BisCore:SpatialCategory"
-      selectionName="CategoryComponent"
       selectedIds={selectedCategoryIds}
       setSelectedIds={setSelectedCategoryIds}
-      filterIds={selectedModelIds}
-      elementQuery={(categoryIds: string[], modelIds?: string[]) => {
-        if (modelIds && modelIds.length > 0) {
-          // AND filter: both category and model
-          return `SELECT ECInstanceId FROM bis.GeometricElement3d WHERE Category.Id IN (${categoryIds.map((id) => `${id}`).join(",")}) AND Model.Id IN (${modelIds.map((id) => `${id}`).join(",")}) `;
-        }
-        return `SELECT ECInstanceId FROM bis.GeometricElement3d WHERE Category.Id IN (${categoryIds.map((id) => `${id}`).join(",")}) `;
-      }}
-      onSelectionChange={onSelectionChange}
       placeholder="Search Categories"
     />
   );
