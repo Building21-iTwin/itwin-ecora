@@ -62,6 +62,16 @@ const elementQuery = (modelIds: string[], categoryIds: string[]) => {
     const keySet = new KeySet(elements as Keys);
 
     Presentation.selection.replaceSelection("My Selection", iModel, keySet);
+
+    // Emphasize all selected elements
+    const vp = IModelApp.viewManager.selectedView;
+    if (vp) {
+      // Dynamically import EmphasizeElements
+      const { EmphasizeElements } = await import("@itwin/core-frontend");
+      const emphasize = EmphasizeElements.getOrCreate(vp);
+      emphasize.clearEmphasizedElements(vp);
+      emphasize.emphasizeElements(elements.map((el: any) => el.id), vp, undefined, true);
+    }
   }
 
   const onSelectedCategoryIdsChange = (categoryIds: string[]) => {
