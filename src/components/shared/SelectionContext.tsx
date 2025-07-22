@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-deprecated */
 import { createContext, type ReactNode, useContext, useState } from "react";
-import { KeySet, type Field, type Keys } from "@itwin/presentation-common";
+import { type Field, type Keys, KeySet } from "@itwin/presentation-common";
 import { Presentation } from "@itwin/presentation-frontend";
 import { IModelApp } from "@itwin/core-frontend";
 import { QueryRowFormat } from "@itwin/core-common";

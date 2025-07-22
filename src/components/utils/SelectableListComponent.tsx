@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-deprecated */
-/**
+ /**
  *   Component for displaying a selectable list of items (e.g., categories, models).
  * - Fetches items from an ECSQL query against the current iModel.
  * - Searching, multi-select, and clearing selection.
@@ -31,7 +30,6 @@ export function SelectableListComponent(props: SelectableListProps) {
     labelKey,
     idKey,
     className,
-    selectionName,
     placeholder = "Search...",
     selectedIds,
     setSelectedIds,

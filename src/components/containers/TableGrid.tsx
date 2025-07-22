@@ -22,7 +22,7 @@ import type {
 import { CenteredContent } from "../UIProviders/CenteredContext";
 import { useSelection } from "../shared/SelectionContext";
 import { ActiveFiltersDisplay, ColumnFilter } from "./TableFilter";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 
 export interface TableProps {
   /** Width of the property grid element. */
@@ -50,9 +50,9 @@ export interface TableProps {
  */
 
 export function Table({ iModel, width, height, loadingContentState, noContentState, noRowsState }: TableProps) {
-  const { tableFilters, availableFields, setAvailableFields } = useSelection();
-  const [filteredRuleset, setFilteredRuleset] = useState<Ruleset>(ruleSet);
-  const [isApplyingFilters, setIsApplyingFilters] = useState(false);
+  const { tableFilters } = useSelection();
+  const [filteredRuleset] = useState<Ruleset>(ruleSet);
+  const [isApplyingFilters] = useState(false);
 
   const { columns, rows, isLoading, loadMoreRows } =
     usePresentationTableWithUnifiedSelection({

@@ -14,17 +14,10 @@ import { SelectionProvider } from "./shared/SelectionContext";
 export function App(props: ComponentProps<typeof Viewer>) {
   const { state } = useAuthorizationContext();
 
-  const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
-  const [querySelectionContext, _setQuerySelectionContext] = useState<string>("");
+  const [] = useState<string[]>([]);
+  const [] = useState<string[]>([]);
+  const [, _setQuerySelectionContext] = useState<string>("");
 
-  const contextValue = {
-    selectedModelIds,
-    setSelectedModelIds,
-    selectedCategoryIds,
-    setSelectedCategoryIds,
-    querySelectionContext,
-  };
 
   return (
     <ThemeProvider>
