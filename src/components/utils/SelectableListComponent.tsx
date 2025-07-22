@@ -18,7 +18,6 @@ interface SelectableListProps {
   labelKey: string;
   idKey: string;
   className: string;
-  selectionName: string;
   placeholder?: string;
   selectedIds: string[];
   setSelectedIds: (ids: string[]) => void;
@@ -60,7 +59,7 @@ export function SelectableListComponent(props: SelectableListProps) {
       IModelApp.viewManager.onSelectedViewportChanged.removeListener(updateIModel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [setSelectedIds]);
 
   // Fetch items from ECSQL query whenever iModel or query changes
   useEffect(() => {

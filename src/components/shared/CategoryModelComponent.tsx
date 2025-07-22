@@ -26,7 +26,6 @@ export function CategoryModelComponent({
         labelKey="label"
         idKey="ECInstanceId"
         className="BisCore:PhysicalModel"
-        selectionName="ModelComponent"
         selectedIds={selectedModelIds}
         setSelectedIds={setSelectedModelIds}
         placeholder="Search Models"
@@ -41,7 +40,6 @@ export function CategoryModelComponent({
       labelKey="label"
       idKey="ECInstanceId"
       className="BisCore:SpatialCategory"
-      selectionName="CategoryComponent"
       selectedIds={selectedCategoryIds}
       setSelectedIds={setSelectedCategoryIds}
       placeholder="Search Categories"

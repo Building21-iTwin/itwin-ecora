@@ -14,7 +14,7 @@ import { SelectionProvider } from "./shared/SelectionContext";
 export function App(props: ComponentProps<typeof Viewer>) {
   const { state } = useAuthorizationContext();
 
-  const [] = useState<string[]>([]);
+
   const [] = useState<string[]>([]);
   const [, _setQuerySelectionContext] = useState<string>("");
 

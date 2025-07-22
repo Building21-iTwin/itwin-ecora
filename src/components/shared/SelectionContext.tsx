@@ -28,16 +28,7 @@ export interface SelectionState {
 
 const SelectionContext = createContext<SelectionState | undefined>(undefined);
 
-export const SelectionProvider = ({ children }: { children: ReactNode }) => {
-  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
-  const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
-  const [tableFilters, setTableFilters] = useState<TableFilter[]>([]);
-  const [availableFields, setAvailableFields] = useState<Field[]>([]);
-
-//note: we may want to have a single element query function that can handle both models and categories
-// Note: This will help if we need to add another thing to a selectable list in the future
-
+// Moved elementQuery outside the component to avoid recreation on every render
 const elementQuery = (modelIds: string[], categoryIds: string[]) => {
   let query = "SELECT ec_classname(ECClassId) as className, ECInstanceId as id FROM bis.GeometricElement3d WHERE ";
   const criteria: string[] = [];
@@ -50,6 +41,13 @@ const elementQuery = (modelIds: string[], categoryIds: string[]) => {
   query += criteria.join(" AND ");
   return query;
 }
+
+export const SelectionProvider = ({ children }: { children: ReactNode }) => {
+  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
+  const [tableFilters, setTableFilters] = useState<TableFilter[]>([]);
+  const [availableFields, setAvailableFields] = useState<Field[]>([]);
 
   const updateSelectedElements = async (modelIds: string[], categoryIds: string[]) => {
     const iModel = IModelApp.viewManager.selectedView?.iModel;
@@ -92,7 +90,7 @@ const elementQuery = (modelIds: string[], categoryIds: string[]) => {
         selectedCategoryIds,
         setSelectedCategoryIds: onSelectedCategoryIdsChange,
         selectedModelIds,
-        setSelectedModelIds : onSelectedModelIdsChange,
+        setSelectedModelIds: onSelectedModelIdsChange,
         tableFilters,
         setTableFilters,
         availableFields,
