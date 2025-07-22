@@ -13,8 +13,6 @@
 import React, { useEffect, useState } from "react";
 import { IModelApp } from "@itwin/core-frontend";
 import { Button, Flex, Input } from "@itwin/itwinui-react";
-import { KeySet } from "@itwin/presentation-common";
-import { Presentation } from "@itwin/presentation-frontend";
 
 interface SelectableListProps {
   query: string;
@@ -22,12 +20,9 @@ interface SelectableListProps {
   idKey: string;
   className: string;
   selectionName: string;
-  elementQuery?: (ids: string[], filterIds?: string[]) => string;
-  onSelectionChange?: (elementIds: string[]) => void;
   placeholder?: string;
   selectedIds: string[];
   setSelectedIds: (ids: string[]) => void;
-  filterIds?: string[];
 }
 export function SelectableListComponent(props: SelectableListProps) {
   
@@ -37,12 +32,9 @@ export function SelectableListComponent(props: SelectableListProps) {
     idKey,
     className,
     selectionName,
-    elementQuery,
-    onSelectionChange,
     placeholder = "Search...",
     selectedIds,
     setSelectedIds,
-    filterIds,
   } = props;
   // List of items to display (id/label pairs)
   const [items, setItems] = useState<{ id: string; label: string }[]>([]);
@@ -99,73 +91,6 @@ export function SelectableListComponent(props: SelectableListProps) {
       cancelled = true;
     };
   }, [iModel, query, idKey, labelKey, className]);
-
-  // Update iModel and Presentation selection when selectedIds changes
-  useEffect(() => {
-    if (!iModel) {
-      return;
-    }
-    let cancelled = false;
-    const updateSelection = async () => {
-      try {
-        // Get current selection from iModel.selectionSet
-
-        const currentSelection = Array.from(iModel.selectionSet.elements);
-        // Compare as sets, not arrays, to avoid order issues
-        const currentSet = new Set(currentSelection);
-        const selectedSet = new Set(selectedIds);
-        const isSameSelection =
-          currentSet.size === selectedSet.size &&
-          Array.from(currentSet).every((id) => selectedSet.has(id));
-
-        if (isSameSelection) {
-          // Selection is already up to date, skip update
-          return;
-        }
-
-        if (selectedIds.length > 0) {
-          const keySet = new KeySet();
-          for (const id of selectedIds) {
-            try {
-              keySet.add({ className, id: String(id) });
-            } catch {}
-          }
-          Presentation.selection.replaceSelection(selectionName, iModel, keySet);
-          if (elementQuery) {
-            try {
-              const queryStr = elementQuery(selectedIds, filterIds);
-              const queryReader = iModel.createQueryReader(queryStr);
-              const elements = await queryReader.toArray();
-              if (cancelled) return;
-              const elementIds = elements.map((row: any) => row.ECInstanceId || row[0]);
-              if (elementIds.length > 0) {
-                iModel.selectionSet.replace(elementIds);
-              }
-              onSelectionChange?.(elementIds);
-            } catch {
-              onSelectionChange?.(selectedIds);
-            }
-          } else {
-            onSelectionChange?.(selectedIds);
-          }
-        } else {
-          // Only clear selection if both current selection and selectedIds are empty
-          if (currentSelection.length > 0 || selectedIds.length > 0) {
-            // Don't clear if something is selected
-            return;
-          }
-          iModel.selectionSet.emptyAll();
-          Presentation.selection.clearSelection(selectionName, iModel);
-          onSelectionChange?.([]);
-        }
-      } catch {
-      }
-    };
-    void updateSelection();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedIds, filterIds, iModel, className, selectionName, elementQuery, onSelectionChange]);
 
   // Handle checkbox toggle for an item
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {

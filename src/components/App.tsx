@@ -4,34 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import "./App.css";
-import { type ComponentProps, createContext, useState } from "react";
+import { type ComponentProps, useState } from "react";
 import { AuthorizationState, useAuthorizationContext } from "../Authorization";
 import { Viewer } from "./Viewer";
 import { ProgressLinear, ThemeProvider } from "@itwin/itwinui-react";
 import { SelectionProvider } from "./shared/SelectionContext";
 
-export interface CategoryModelContextType {
-  selectedModelIds: string[];
-  setSelectedModelIds: (ids: string[]) => void;
-  selectedCategoryIds: string[];
-  setSelectedCategoryIds: (ids: string[]) => void;
-  querySelectionContext: string;
-}
-
-export const CategoryModelContext = createContext<CategoryModelContextType>({
-  selectedModelIds: [],
-  setSelectedModelIds: () => {},
-  selectedCategoryIds: [],
-  setSelectedCategoryIds: () => {},
-  querySelectionContext: "",
-});
-
-// Effect component to sync selection/emphasis
-function CategoryModelSelectionEffect() {
-
-
-  return null;
-}
 
 export function App(props: ComponentProps<typeof Viewer>) {
   const { state } = useAuthorizationContext();
@@ -51,8 +29,6 @@ export function App(props: ComponentProps<typeof Viewer>) {
   return (
     <ThemeProvider>
       <SelectionProvider>
-        <CategoryModelContext.Provider value={contextValue}>
-          <CategoryModelSelectionEffect />
           <div className="viewer-container">
             {state === AuthorizationState.Pending ? (
               <Loader />
@@ -60,7 +36,6 @@ export function App(props: ComponentProps<typeof Viewer>) {
               <Viewer {...props} />
             )}
           </div>
-        </CategoryModelContext.Provider>
       </SelectionProvider>
     </ThemeProvider>
   );

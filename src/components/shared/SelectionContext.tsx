@@ -1,5 +1,8 @@
 import { createContext, type ReactNode, useContext, useState } from "react";
-import type { Field } from "@itwin/presentation-common";
+import { KeySet, type Field, type Keys } from "@itwin/presentation-common";
+import { Presentation } from "@itwin/presentation-frontend";
+import { IModelApp } from "@itwin/core-frontend";
+import { QueryRowFormat } from "@itwin/core-common";
 
 // Define table filter type
 export interface TableFilter {
@@ -31,15 +34,54 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   const [tableFilters, setTableFilters] = useState<TableFilter[]>([]);
   const [availableFields, setAvailableFields] = useState<Field[]>([]);
 
+//note: we may want to have a single element query function that can handle both models and categories
+// Note: This will help if we need to add another thing to a selectable list in the future
+
+const elementQuery = (modelIds: string[], categoryIds: string[]) => {
+  let query = "SELECT ec_classname(ECClassId) as className, ECInstanceId as id FROM bis.GeometricElement3d WHERE ";
+  const criteria: string[] = [];
+  if (modelIds.length > 0) {
+    criteria.push(`Model.Id IN (${modelIds.map((id) => `${id}`).join(",")})`);
+  }
+  if (categoryIds.length > 0) {
+    criteria.push(`Category.Id IN (${categoryIds.map((id) => `${id}`).join(",")})`);
+  }
+  query += criteria.join(" AND ");
+  return query;
+}
+
+  const updateSelectedElements = async (modelIds: string[], categoryIds: string[]) => {
+    const iModel = IModelApp.viewManager.selectedView?.iModel;
+    if (!iModel) return;
+
+    
+    const query = elementQuery(modelIds, categoryIds);
+    const queryReader = iModel.createQueryReader(query, undefined, { rowFormat: QueryRowFormat.UseECSqlPropertyNames});
+    const elements = await queryReader.toArray();
+    const keySet = new KeySet(elements as Keys);
+
+    Presentation.selection.replaceSelection("My Selection", iModel, keySet);
+  }
+
+  const onSelectedCategoryIdsChange = (categoryIds: string[]) => {
+    setSelectedCategoryIds(categoryIds);
+    void updateSelectedElements(selectedModelIds, categoryIds);
+  }
+
+  const onSelectedModelIdsChange = (modelIds: string[]) => {
+    setSelectedModelIds(modelIds);
+    void updateSelectedElements(modelIds, selectedCategoryIds);
+  };
+
   return (
     <SelectionContext.Provider
       value={{
         selectedKeys,
         setSelectedKeys,
         selectedCategoryIds,
-        setSelectedCategoryIds,
+        setSelectedCategoryIds: onSelectedCategoryIdsChange,
         selectedModelIds,
-        setSelectedModelIds,
+        setSelectedModelIds : onSelectedModelIdsChange,
         tableFilters,
         setTableFilters,
         availableFields,
