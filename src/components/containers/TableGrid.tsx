@@ -71,9 +71,9 @@ export function Table({ iModel, width, height, loadingContentState, noContentSta
       return tableFilters.every(filter => {
         const cell = row[filter.id];
         // Only filter primitive string values
-        if (!cell || cell.value.valueFormat !== PropertyValueFormat.Primitive) return false;
+        if (!cell || cell.value.valueFormat !== PropertyValueFormat.Primitive) return true;
         const primitiveValue = (cell.value as { value: unknown }).value;
-        if (typeof primitiveValue !== "string") return false;
+        if (typeof primitiveValue !== "string") return true;
         return primitiveValue.toLowerCase().includes(filter.value.toLowerCase());
       });
     });
