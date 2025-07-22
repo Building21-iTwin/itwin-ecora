@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import "./App.css";
-import { type ComponentProps, useState } from "react";
+import { type ComponentProps } from "react";
 import { AuthorizationState, useAuthorizationContext } from "../Authorization";
 import { Viewer } from "./Viewer";
 import { ProgressLinear, ThemeProvider } from "@itwin/itwinui-react";
@@ -15,8 +15,6 @@ export function App(props: ComponentProps<typeof Viewer>) {
   const { state } = useAuthorizationContext();
 
 
-  const [] = useState<string[]>([]);
-  const [, _setQuerySelectionContext] = useState<string>("");
 
 
   return (
