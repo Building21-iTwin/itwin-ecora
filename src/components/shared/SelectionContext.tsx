@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-deprecated */
-import { createContext, type ReactNode, useContext, useState } from "react";
+import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 import { type Field, type Keys, KeySet } from "@itwin/presentation-common";
 import { Presentation } from "@itwin/presentation-frontend";
 import { IModelApp } from "@itwin/core-frontend";
@@ -28,9 +28,39 @@ export interface SelectionState {
 
 const SelectionContext = createContext<SelectionState | undefined>(undefined);
 
-// Moved elementQuery outside the component to avoid recreation on every render
-const elementQuery = (modelIds: string[], categoryIds: string[]) => {
-  let query = "SELECT ec_classname(ECClassId) as className, ECInstanceId as id FROM bis.GeometricElement3d WHERE ";
+// Type guard to check if a Field has 'properties' (PropertiesField)
+function isPropertiesField(field: Field): field is Field & { properties: any[] } {
+  return typeof (field as any).properties !== 'undefined';
+}
+
+// Helper to check if a property is valid for filtering (exists on bis.GeometricElement3d)
+function isValidFilterProperty(filter: TableFilter, availableFields: Field[]): boolean {
+  if (!filter.field || !isPropertiesField(filter.field)) return false;
+  // Only allow properties that are direct properties of bis.GeometricElement3d
+  // and are string type (as per TableFilter.tsx logic)
+  const property = filter.field.properties?.[0]?.property;
+  return !!property && property.type === "string" && availableFields.some(f => f.name === filter.field?.name);
+}
+
+// Build WHERE clause from tableFilters, only using valid properties
+function buildFilterWhereClause(tableFilters: TableFilter[], availableFields: Field[]): string {
+  if (!tableFilters.length) return "";
+  return tableFilters
+    .filter(filter => isValidFilterProperty(filter, availableFields))
+    .map(filter => {
+      // Use the actual property name from the field
+      let propertyName = filter.id;
+      if (filter.field && isPropertiesField(filter.field)) {
+        propertyName = filter.field.properties?.[0]?.property?.name || filter.id;
+      }
+      return `[${propertyName}] LIKE '%${filter.value.replace(/'/g, "''")}%'`;
+    })
+    .join(" AND ");
+}
+
+// Updated elementQuery to accept availableFields and only use valid filters
+const elementQuery = (modelIds: string[], categoryIds: string[], filters: TableFilter[], availFields: Field[]) => {
+  let query = "SELECT ec_classname(ECClassId) as className, ECInstanceId as id FROM bis.GeometricElement3d";
   const criteria: string[] = [];
   if (modelIds.length > 0) {
     criteria.push(`Model.Id IN (${modelIds.map((id) => `${id}`).join(",")})`);
@@ -38,7 +68,13 @@ const elementQuery = (modelIds: string[], categoryIds: string[]) => {
   if (categoryIds.length > 0) {
     criteria.push(`Category.Id IN (${categoryIds.map((id) => `${id}`).join(",")})`);
   }
-  query += criteria.join(" AND ");
+  const filterClause = buildFilterWhereClause(filters, availFields);
+  if (filterClause) {
+    criteria.push(filterClause);
+  }
+  if (criteria.length > 0) {
+    query += ` WHERE ${criteria.join(" AND ")}`;
+  }
   return query;
 }
 
@@ -49,12 +85,17 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   const [tableFilters, setTableFilters] = useState<TableFilter[]>([]);
   const [availableFields, setAvailableFields] = useState<Field[]>([]);
 
-  const updateSelectedElements = async (modelIds: string[], categoryIds: string[]) => {
+  useEffect(() => {
+    void updateSelectedElements(selectedModelIds, selectedCategoryIds, tableFilters, availableFields);
+  }, [selectedModelIds, selectedCategoryIds, tableFilters, availableFields]);
+
+  // Update to pass availableFields, avoid shadowing
+  const updateSelectedElements = async (modelIds: string[], categoryIds: string[], filters: TableFilter[], availFields: Field[]) => {
     const iModel = IModelApp.viewManager.selectedView?.iModel;
     if (!iModel) return;
 
-    
-    const query = elementQuery(modelIds, categoryIds);
+    // Build query with filters
+    const query = elementQuery(modelIds, categoryIds, filters, availFields);
     const queryReader = iModel.createQueryReader(query, undefined, { rowFormat: QueryRowFormat.UseECSqlPropertyNames});
     const elements = await queryReader.toArray();
     const keySet = new KeySet(elements as Keys);
@@ -72,14 +113,15 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
+  // Update category/model selection handlers to pass availableFields
   const onSelectedCategoryIdsChange = (categoryIds: string[]) => {
     setSelectedCategoryIds(categoryIds);
-    void updateSelectedElements(selectedModelIds, categoryIds);
+    void updateSelectedElements(selectedModelIds, categoryIds, tableFilters, availableFields);
   }
 
   const onSelectedModelIdsChange = (modelIds: string[]) => {
     setSelectedModelIds(modelIds);
-    void updateSelectedElements(modelIds, selectedCategoryIds);
+    void updateSelectedElements(modelIds, selectedCategoryIds, tableFilters, availableFields);
   };
 
   return (
