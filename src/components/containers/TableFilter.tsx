@@ -3,11 +3,13 @@
  * See LICENSE.md in the project root for license terms and full copyright notice.
  *--------------------------------------------------------------------------------------------*/
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { 
-  Flex, 
-  IconButton,
-  Input, 
+  Button, 
+  Flex,
+  IconButton, 
+  Input,
+  Popover,
   Text,
   Tooltip
 } from "@itwin/itwinui-react";
@@ -24,9 +26,9 @@ export interface TableFilterProps {
 
 export function ColumnFilter({ columnId, columnLabel, field, placeholder }: TableFilterProps) {
   const { tableFilters, setTableFilters } = useSelection();
+  const [popoverOpen, setPopoverOpen] = useState(false);
   const [localValue, setLocalValue] = useState("");
   const [isApplied, setIsApplied] = useState(false);
-  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
 
   // Find existing filter for this column
   const existingFilter = useMemo(() => 
@@ -45,85 +47,46 @@ export function ColumnFilter({ columnId, columnLabel, field, placeholder }: Tabl
     }
   }, [existingFilter]);
 
-  // Debounced filter application
-  const applyFilter = useCallback((value: string) => {
-    const trimmedValue = value.trim();
-    
+  // Check if field supports filtering
+  const isFilterable = useMemo(() => {
+    if (!field?.isPropertiesField()) {
+      return false;
+    }
+    // For now, only support string properties for LIKE queries
+    const property = field.properties?.[0]?.property;
+    return property?.type === "string";
+  }, [field]);
+
+  const applyFilter = useCallback(() => {
+    const trimmedValue = localValue.trim();
     if (trimmedValue) {
-      // Add or update filter
       const newFilter: TableFilter = {
         id: columnId,
         value: trimmedValue,
-        field
+        field,
+        columnId: undefined
       };
-      
       const updatedFilters = tableFilters.filter(filter => filter.id !== columnId);
       setTableFilters([...updatedFilters, newFilter]);
       setIsApplied(true);
+      setPopoverOpen(false);
     } else {
       // Remove filter if value is empty
       const updatedFilters = tableFilters.filter(filter => filter.id !== columnId);
       setTableFilters(updatedFilters);
       setLocalValue("");
       setIsApplied(false);
+      setPopoverOpen(false);
     }
-  }, [columnId, field, tableFilters, setTableFilters]);
+  }, [columnId, field, tableFilters, setTableFilters, localValue]);
 
   const removeFilter = useCallback(() => {
     const updatedFilters = tableFilters.filter(filter => filter.id !== columnId);
     setTableFilters(updatedFilters);
     setLocalValue("");
     setIsApplied(false);
+    setPopoverOpen(false);
   }, [columnId, tableFilters, setTableFilters]);
-
-  const handleInputChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
-    setLocalValue(value);
-
-    // Clear existing timer
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-    }
-
-    // Set new timer for debounced filter application
-    const timer = setTimeout(() => {
-      applyFilter(value);
-    }, 300); // 300ms debounce
-
-    setDebounceTimer(timer);
-  }, [applyFilter, debounceTimer]);
-
-  const handleKeyPress = useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") {
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
-        setDebounceTimer(null);
-      }
-      applyFilter(localValue);
-    } else if (event.key === "Escape") {
-      removeFilter();
-    }
-  }, [applyFilter, removeFilter, localValue, debounceTimer]);
-
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => {
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
-      }
-    };
-  }, [debounceTimer]);
-
-  // Check if field supports filtering
-  const isFilterable = useMemo(() => {
-    if (!field?.isPropertiesField()) {
-      return false;
-    }
-    
-    // For now, only support string properties for LIKE queries
-    const property = field.properties?.[0]?.property;
-    return property?.type === "string";
-  }, [field]);
 
   if (!isFilterable) {
     return (
@@ -136,57 +99,58 @@ export function ColumnFilter({ columnId, columnLabel, field, placeholder }: Tabl
   }
 
   return (
-    <Flex alignItems="center" gap="xs" style={{ padding: "2px 4px", minWidth: "120px" }}>
-      <div style={{ position: "relative", flex: 1 }}>
-        <Input
-          value={localValue}
-          onChange={handleInputChange}
-          onKeyDown={handleKeyPress}
-          placeholder={placeholder || `Filter ${columnLabel}...`}
-          size="small"
-          style={{ 
-            paddingRight: isApplied ? "24px" : "8px",
-            fontSize: "12px"
-          }}
-        />
-        
-        {isApplied && (
-          <IconButton
+    <Popover
+      content={
+        <Flex flexDirection="column" gap="sm" style={{ minWidth: 220 }}>
+          <Input
+            value={localValue}
+            onChange={e => setLocalValue(e.target.value)}
+            placeholder={placeholder || `Filter ${columnLabel}...`}
             size="small"
-            styleType="borderless"
-            onClick={removeFilter}
-            style={{
-              position: "absolute",
-              right: "2px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              padding: "2px",
-              minHeight: "16px",
-              minWidth: "16px"
+            style={{ fontSize: "12px" }}
+            onKeyDown={e => {
+              if (e.key === "Enter") applyFilter();
+              if (e.key === "Escape") setPopoverOpen(false);
             }}
-            label="Clear filter"
-          >
-            <SvgClose style={{ fontSize: "10px" }} />
-          </IconButton>
-        )}
-      </div>
-      
-      {isApplied && (
-        <span>
-          <SvgFilter style={{ fontSize: "8px", color: "primary" }} />
-        </span>
-      )}
-    </Flex>
+            // eslint-disable-next-line jsx-a11y/no-autofocus
+            autoFocus
+          />
+          <Flex gap="xs" justifyContent="flex-end">
+            <Button size="small" styleType="borderless" onClick={() => setPopoverOpen(false)}>
+              Cancel
+            </Button>
+            <Button size="small" onClick={applyFilter} disabled={!localValue.trim()}>
+              Apply
+            </Button>
+            {isApplied && (
+              <Button size="small" styleType="borderless" onClick={removeFilter}>
+                <SvgClose />
+              </Button>
+            )}
+          </Flex>
+        </Flex>
+      }
+      placement="bottom"
+      visible={popoverOpen}
+      onVisibleChange={setPopoverOpen}
+      // manual control, no trigger prop
+    >
+      <IconButton
+        size="small"
+        styleType={isApplied ? "high-visibility" : "borderless"}
+        onClick={() => setPopoverOpen(true)}
+        label={isApplied ? "Edit filter" : "Add filter"}
+        style={{ minHeight: "20px", minWidth: "20px" }}
+      >
+        <SvgFilter style={{ fontSize: "14px" }} />
+      </IconButton>
+    </Popover>
   );
 }
 
 // Component to show active filters summary
-export function ActiveFiltersDisplay() {
-  const { tableFilters, setTableFilters } = useSelection();
-
-  const clearAllFilters = useCallback(() => {
-    setTableFilters([]);
-  }, [setTableFilters]);
+export function ActiveFiltersDisplay() { 
+  const { tableFilters, setTableFilters, clearAllFilters } = useSelection();
 
   if (tableFilters.length === 0) {
     return null;
@@ -197,7 +161,6 @@ export function ActiveFiltersDisplay() {
       <Text variant="small" style={{ fontWeight: 500 }}>
         Active filters:
       </Text>
-      
       <Flex gap="xs" style={{ flexWrap: "wrap" }}>
         {tableFilters.map((filter) => (
           <span 
@@ -234,7 +197,6 @@ export function ActiveFiltersDisplay() {
           </span>
         ))}
       </Flex>
-      
       <IconButton
         size="small"
         styleType="borderless"
