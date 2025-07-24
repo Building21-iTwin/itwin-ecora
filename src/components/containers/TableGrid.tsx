@@ -1,5 +1,7 @@
 /* eslint-disable no-duplicate-imports */
-
+/**
+ * This is the component that renders a table at the bottom for description grid.
+ */
 /*---------------------------------------------------------------------------------------------
  * Copyright (c) Bentley Systems, Incorporated. All rights reserved.
  * See LICENSE.md in the project root for license terms and full copyright notice.
@@ -8,7 +10,6 @@ import * as React from "react";
 import { PropertyRecord } from "@itwin/appui-abstract";
 import { IModelConnection } from "@itwin/core-frontend";
 import { Flex, ProgressRadial, Text, Table as UiTable } from "@itwin/itwinui-react";
-import { PropertyValueFormat } from "@itwin/appui-abstract";
 import {
   TableCellRenderer,
   usePresentationTableWithUnifiedSelection,
@@ -48,9 +49,8 @@ export interface TableProps {
 
 export function Table({ iModel, width, height, loadingContentState, noContentState, noRowsState }: TableProps) {
   const { tableFilters, setAvailableFields } = useSelection();
-
-  // Define ruleset before usage
-  const ruleset = React.useMemo(() => ({
+  
+const ruleset = React.useMemo(() => ({
     id: "SelectedElementsRuleset",
     rules: [
       {
@@ -64,7 +64,6 @@ export function Table({ iModel, width, height, loadingContentState, noContentSta
     ],
   }), []);
 
-  // Get columns and rows from presentation table hook
   const { columns, rows, isLoading: _isLoading, loadMoreRows } =
     usePresentationTableWithUnifiedSelection({
       imodel: iModel,
@@ -73,25 +72,6 @@ export function Table({ iModel, width, height, loadingContentState, noContentSta
       columnMapper: mapColumns,
       rowMapper: mapRows,
     });
-
-  // Filter rows after rows are available
-  const filteredRows = React.useMemo(() => {
-    if (!rows) return [];
-    return rows.filter(row => {
-      for (const filter of tableFilters) {
-        // Only use displayValue for PrimitiveValue
-        const value = row[filter.columnId]?.value;
-        const cellValue =
-          value?.valueFormat === PropertyValueFormat.Primitive
-            ? value.displayValue
-            : undefined;
-        if (typeof cellValue !== "string" || !cellValue.toLowerCase().includes(filter.value.toLowerCase())) {
-          return false;
-        }
-      }
-      return true;
-    });
-  }, [rows, tableFilters]);
 
   // Update available fields when columns change
   React.useEffect(() => {
@@ -133,7 +113,6 @@ export function Table({ iModel, width, height, loadingContentState, noContentSta
           <ActiveFiltersDisplay />
         </div>
       )}
-    
       
       {/* Element Count Display */}
       <div style={{ padding: "0.5rem", fontWeight: 500, fontSize: "0.95rem", color: "#333" }}>
@@ -143,12 +122,12 @@ export function Table({ iModel, width, height, loadingContentState, noContentSta
           </Text>
         </Flex>
       </div>
-            
+      
       {/* Table */}
       <div style={{ flex: 1, minHeight: 0 }}>
         <UiTable
           columns={columns}
-          data={filteredRows}
+          data={rows}
           enableVirtualization={true}
           emptyTableContent={
             tableFilters.length > 0 ? 
@@ -181,7 +160,6 @@ function mapColumns(columnDefinitions: TableColumnDefinition) {
         />
       </div>
     ),
-
     Cell: cellRenderer,
     width: 225,
     field: columnDefinitions.field, // Include field for filtering
