@@ -131,19 +131,8 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
 
     // Build query with filters
     const query = elementQuery(modelIds, categoryIds, filters, availFields);
-    // If no models or categories selected, clear selection and emphasis
+    // If no models or categories selected, do not override manual selection/emphasis
     if (!query) {
-      // Clear selection
-      const emptyKeySet = new KeySet();
-      Presentation.selection.replaceSelection("My Selection", iModel, emptyKeySet);
-
-      // Clear any emphasized elements
-      const viewport = IModelApp.viewManager.selectedView;
-      if (viewport) {
-        const { EmphasizeElements } = await import("@itwin/core-frontend");
-        const emphasize = EmphasizeElements.getOrCreate(viewport);
-        emphasize.clearEmphasizedElements(viewport);
-      }
       return;
     }
     const queryReader = iModel.createQueryReader(query, undefined, { rowFormat: QueryRowFormat.UseECSqlPropertyNames});
@@ -163,13 +152,37 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
+  // Helper to clear all selections and emphasis
+  const clearSelectionAndEmphasis = () => {
+    const iModel = IModelApp.viewManager.selectedView?.iModel;
+    if (!iModel) return;
+    const emptyKeySet = new KeySet();
+    Presentation.selection.replaceSelection("My Selection", iModel, emptyKeySet);
+    const vp = IModelApp.viewManager.selectedView;
+    if (vp) {
+      // Dynamically import EmphasizeElements and clear emphasis
+      void import("@itwin/core-frontend").then(({ EmphasizeElements }) => {
+        const emphasize = EmphasizeElements.getOrCreate(vp);
+        emphasize.clearEmphasizedElements(vp);
+      });
+    }
+  };
+
   // Update category/model selection handlers to pass availableFields
   const onSelectedCategoryIdsChange = (categoryIds: string[]) => {
     setSelectedCategoryIds(categoryIds);
+    // clear selection if no models or categories left
+    if (categoryIds.length === 0 && selectedModelIds.length === 0) {
+      clearSelectionAndEmphasis();
+    }
   }
 
   const onSelectedModelIdsChange = (modelIds: string[]) => {
     setSelectedModelIds(modelIds);
+    // clear selection if no models or categories left
+    if (modelIds.length === 0 && selectedCategoryIds.length === 0) {
+      clearSelectionAndEmphasis();
+    }
   };
 
   return (
