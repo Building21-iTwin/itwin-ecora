@@ -67,7 +67,6 @@ export function SelectableListComponent(props: SelectableListProps) {
     const getItems = async () => {
       if (!iModel) {
         if (!cancelled) setItems([]);
-        if (!cancelled) setItems([]);
         return;
       }
       try {
