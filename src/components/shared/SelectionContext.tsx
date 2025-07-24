@@ -43,7 +43,7 @@ function isValidFilterProperty(filter: TableFilter, availableFields: Field[]): b
 }
 
 // Build WHERE clause from tableFilters, only using valid properties
-function buildFilterWhereClause(tableFilters: TableFilter[], availableFields: Field[]): string {
+export function buildFilterWhereClause(tableFilters: TableFilter[], availableFields: Field[]): string {
   if (!tableFilters.length) return "";
   return tableFilters
     .filter(filter => isValidFilterProperty(filter, availableFields))
@@ -116,12 +116,10 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   // Update category/model selection handlers to pass availableFields
   const onSelectedCategoryIdsChange = (categoryIds: string[]) => {
     setSelectedCategoryIds(categoryIds);
-    void updateSelectedElements(selectedModelIds, categoryIds, tableFilters, availableFields);
   }
 
   const onSelectedModelIdsChange = (modelIds: string[]) => {
     setSelectedModelIds(modelIds);
-    void updateSelectedElements(modelIds, selectedCategoryIds, tableFilters, availableFields);
   };
 
   return (
