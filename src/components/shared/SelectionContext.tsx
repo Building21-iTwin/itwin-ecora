@@ -51,15 +51,24 @@ export function buildFilterWhereClause(tableFilters: TableFilter[], availableFie
       // Use the actual property name from the field
       let propertyName = filter.id;
       if (filter.field && isPropertiesField(filter.field)) {
-        propertyName = filter.field.properties?.[0]?.property?.name || filter.id;
+        const property = filter.field.properties?.[0]?.property;
+        if (property?.name) {
+          propertyName = property.name;
+        }
       }
-      return `[${propertyName}] LIKE '%${filter.value.replace(/'/g, "''")}%'`;
+      // Escape single quotes in the filter value and use proper SQL LIKE syntax
+      const escapedValue = filter.value.replace(/'/g, "''");
+      return `[${propertyName}] LIKE '%${escapedValue}%'`;
     })
     .join(" AND ");
 }
 
 // Updated elementQuery to accept availableFields and only use valid filters
 const elementQuery = (modelIds: string[], categoryIds: string[], filters: TableFilter[], availFields: Field[]) => {
+  // If neither model nor category is selected, return empty query (do not run)
+  if (modelIds.length === 0 && categoryIds.length === 0) {
+    return "";
+  }
   let query = "SELECT ec_classname(ECClassId) as className, ECInstanceId as id FROM bis.GeometricElement3d";
   const criteria: string[] = [];
   if (modelIds.length > 0) {
@@ -75,6 +84,7 @@ const elementQuery = (modelIds: string[], categoryIds: string[], filters: TableF
   if (criteria.length > 0) {
     query += ` WHERE ${criteria.join(" AND ")}`;
   }
+  // If a model or category is selected, run the query as normal
   return query;
 }
 
@@ -82,8 +92,28 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
-  const [tableFilters, setTableFilters] = useState<TableFilter[]>([]);
+  
+  // Load saved filters from localStorage on initialization
+  const [tableFilters, setTableFiltersState] = useState<TableFilter[]>(() => {
+    try {
+      const saved = localStorage.getItem('itwin-grid-filters');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  
   const [availableFields, setAvailableFields] = useState<Field[]>([]);
+
+  // Custom setTableFilters that also saves to localStorage
+  const setTableFilters = (filters: TableFilter[]) => {
+    setTableFiltersState(filters);
+    try {
+      localStorage.setItem('itwin-grid-filters', JSON.stringify(filters));
+    } catch {
+      // Silently fail if localStorage is not available
+    }
+  };
 
   useEffect(() => {
     void updateSelectedElements(selectedModelIds, selectedCategoryIds, tableFilters, availableFields);
@@ -96,6 +126,21 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
 
     // Build query with filters
     const query = elementQuery(modelIds, categoryIds, filters, availFields);
+    // If no models or categories selected, clear selection and emphasis
+    if (!query) {
+      // Clear selection
+      const emptyKeySet = new KeySet();
+      Presentation.selection.replaceSelection("My Selection", iModel, emptyKeySet);
+
+      // Clear any emphasized elements
+      const viewport = IModelApp.viewManager.selectedView;
+      if (viewport) {
+        const { EmphasizeElements } = await import("@itwin/core-frontend");
+        const emphasize = EmphasizeElements.getOrCreate(viewport);
+        emphasize.clearEmphasizedElements(viewport);
+      }
+      return;
+    }
     const queryReader = iModel.createQueryReader(query, undefined, { rowFormat: QueryRowFormat.UseECSqlPropertyNames});
     const elements = await queryReader.toArray();
     const keySet = new KeySet(elements as Keys);

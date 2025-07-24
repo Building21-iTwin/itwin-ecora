@@ -149,11 +149,7 @@ export function ColumnFilter({ columnId, columnLabel, field, placeholder }: Tabl
 
 // Component to show active filters summary
 export function ActiveFiltersDisplay() { 
-  const { tableFilters, setTableFilters } = useSelection();
-
-  const clearAllFilters = useCallback(() => {
-    setTableFilters([]);
-  }, [setTableFilters]);
+  const { tableFilters, setTableFilters, clearAllFilters } = useSelection();
 
   if (tableFilters.length === 0) {
     return null;
