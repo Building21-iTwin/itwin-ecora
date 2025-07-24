@@ -50,8 +50,7 @@ export interface TableProps {
 export function Table({ iModel, width, height, loadingContentState, noContentState, noRowsState }: TableProps) {
   const { tableFilters, setAvailableFields } = useSelection();
   
-  // Use a simple ruleset that shows selected instances
-  const ruleset = React.useMemo(() => ({
+const ruleset = React.useMemo(() => ({
     id: "SelectedElementsRuleset",
     rules: [
       {

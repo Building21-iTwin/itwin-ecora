@@ -24,6 +24,7 @@ export interface SelectionState {
   setTableFilters: (filters: TableFilter[]) => void;
   availableFields: Field[];
   setAvailableFields: (fields: Field[]) => void;
+  clearAllFilters: () => void;
 }
 
 const SelectionContext = createContext<SelectionState | undefined>(undefined);
@@ -115,11 +116,14 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Clear all table filters
+  const clearAllFilters = () => setTableFilters([]);
+
   useEffect(() => {
     void updateSelectedElements(selectedModelIds, selectedCategoryIds, tableFilters, availableFields);
   }, [selectedModelIds, selectedCategoryIds, tableFilters, availableFields]);
 
-  // Update to pass availableFields, avoid shadowing
+  // Update selected elements based on model, category, and filters
   const updateSelectedElements = async (modelIds: string[], categoryIds: string[], filters: TableFilter[], availFields: Field[]) => {
     const iModel = IModelApp.viewManager.selectedView?.iModel;
     if (!iModel) return;
@@ -180,6 +184,7 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
         setTableFilters,
         availableFields,
         setAvailableFields,
+        clearAllFilters,
       }}
     >
       {children}
