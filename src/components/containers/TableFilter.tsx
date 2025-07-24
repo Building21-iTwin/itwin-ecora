@@ -63,7 +63,8 @@ export function ColumnFilter({ columnId, columnLabel, field, placeholder }: Tabl
       const newFilter: TableFilter = {
         id: columnId,
         value: trimmedValue,
-        field
+        field,
+        columnId: undefined
       };
       const updatedFilters = tableFilters.filter(filter => filter.id !== columnId);
       setTableFilters([...updatedFilters, newFilter]);

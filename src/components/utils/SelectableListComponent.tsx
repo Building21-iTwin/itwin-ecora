@@ -67,11 +67,13 @@ export function SelectableListComponent(props: SelectableListProps) {
     const getItems = async () => {
       if (!iModel) {
         if (!cancelled) setItems([]);
+        if (!cancelled) setItems([]);
         return;
       }
       try {
         const queryReader = iModel.createQueryReader(query);
         const rows = await queryReader.toArray();
+        if (cancelled) return;
         if (cancelled) return;
         // Map rows to {id, label} objects for display
         const list = rows.map((row: any) => ({
@@ -80,6 +82,7 @@ export function SelectableListComponent(props: SelectableListProps) {
         }));
         setItems(list);
       } catch {
+        if (!cancelled) setItems([]);
         if (!cancelled) setItems([]);
       }
     };

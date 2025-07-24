@@ -7,6 +7,7 @@ import { QueryRowFormat } from "@itwin/core-common";
 
 // Define table filter type
 export interface TableFilter {
+  columnId: any;
   id: string;
   value: string;
   field?: Field;
