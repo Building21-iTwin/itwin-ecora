@@ -120,8 +120,19 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   // Clear all table filters
   const clearAllFilters = () => setTableFilters([]);
 
+
+  // Only update selection when model/category changes and no filters are present
   useEffect(() => {
-    void updateSelectedElements(selectedModelIds, selectedCategoryIds, tableFilters, availableFields);
+    if (tableFilters.length === 0) {
+      void updateSelectedElements(selectedModelIds, selectedCategoryIds, tableFilters, availableFields);
+    }
+  }, [selectedModelIds, selectedCategoryIds, tableFilters, availableFields]);
+
+  // Only update selection when filters or availableFields change and filters are present
+  useEffect(() => {
+    if (tableFilters.length > 0) {
+      void updateSelectedElements(selectedModelIds, selectedCategoryIds, tableFilters, availableFields);
+    }
   }, [selectedModelIds, selectedCategoryIds, tableFilters, availableFields]);
 
   // Update selected elements based on model, category, and filters
