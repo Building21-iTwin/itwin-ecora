@@ -22,7 +22,7 @@ export function CategoryModelComponent({
   if (type === "model") {
     return (
       <SelectableListComponent
-        query={`SELECT m.ECInstanceId as ECInstanceId, COALESCE(p.UserLabel, p.CodeValue, 'Unnamed Model') as label FROM bis.PhysicalModel m JOIN bis.PhysicalPartition p ON p.ECInstanceId = m.ModeledElement.Id WHERE m.ECInstanceId IN (SELECT DISTINCT Model.Id FROM bis.GeometricElement3d WHERE Model.Id IS NOT NULL) ORDER BY label`}
+        query={`SELECT m.ECInstanceId as ECInstanceId, COALESCE(p.$->UserLabel, p.$->CodeValue, 'Unnamed Model') as label FROM bis.PhysicalModel m JOIN bis.PhysicalPartition p ON p.ECInstanceId = m.ModeledElement.Id WHERE m.ECInstanceId IN (SELECT DISTINCT Model.Id FROM bis.GeometricElement3d WHERE Model.Id IS NOT NULL) ORDER BY label`}
         labelKey="label"
         idKey="ECInstanceId"
         className="BisCore:PhysicalModel"
@@ -36,7 +36,7 @@ export function CategoryModelComponent({
   // Default to category
   return (
     <SelectableListComponent
-      query={`SELECT ECInstanceId, COALESCE(UserLabel, CodeValue, 'Unnamed Category') as label FROM bis.SpatialCategory WHERE ECInstanceId IN (SELECT DISTINCT Category.Id FROM bis.GeometricElement3d WHERE Category.Id IS NOT NULL) ORDER BY label`}
+      query={`SELECT ECInstanceId, COALESCE($->UserLabel, $->CodeValue, 'Unnamed Category') as label FROM bis.SpatialCategory WHERE ECInstanceId IN (SELECT DISTINCT Category.Id FROM bis.GeometricElement3d WHERE Category.Id IS NOT NULL) ORDER BY label`}
       labelKey="label"
       idKey="ECInstanceId"
       className="BisCore:SpatialCategory"
