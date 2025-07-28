@@ -50,7 +50,10 @@ export interface TableProps {
 export function Table({ iModel, width, height, loadingContentState, noContentState, noRowsState }: TableProps) {
   const { tableFilters, setAvailableFields } = useSelection();
   
-const ruleset = React.useMemo(() => ({
+  // Track loading state for initial data fetch
+  const [isInitialLoading, setIsInitialLoading] = React.useState(true);
+  
+  const ruleset = React.useMemo(() => ({
     id: "SelectedElementsRuleset",
     rules: [
       {
@@ -64,7 +67,7 @@ const ruleset = React.useMemo(() => ({
     ],
   }), []);
 
-  const { columns, rows, isLoading: _isLoading, loadMoreRows } =
+  const { columns, rows, isLoading, loadMoreRows } =
     usePresentationTableWithUnifiedSelection({
       imodel: iModel,
       ruleset,
@@ -73,11 +76,23 @@ const ruleset = React.useMemo(() => ({
       rowMapper: mapRows,
     });
 
-  // Update available fields when columns change
+  // Reset loading state when selection changes (when columns become undefined)
+  React.useEffect(() => {
+    if (columns === undefined) {
+      setIsInitialLoading(true);
+    }
+  }, [columns]);
+
+  // Update available fields when columns change and track loading state
   React.useEffect(() => {
     if (columns && columns.length > 0) {
       const fields = columns.map(col => (col as any).field).filter(Boolean);
       setAvailableFields(fields);
+      // Data has loaded, stop initial loading
+      setIsInitialLoading(false);
+    } else if (columns === undefined) {
+      // Still loading, keep initial loading state
+      setIsInitialLoading(true);
     }
   }, [columns, setAvailableFields]);
 
@@ -125,20 +140,27 @@ const ruleset = React.useMemo(() => ({
       
       {/* Table */}
       <div style={{ flex: 1, minHeight: 0 }}>
-        <UiTable
-          columns={columns}
-          data={rows}
-          enableVirtualization={true}
-          emptyTableContent={
-            tableFilters.length > 0 ? 
-              <>No elements match the current filters.</> : 
-              noRowsState?.() ?? <>No rows.</>
-          }
-          onBottomReached={loadMoreRows}
-          density="extra-condensed"
-          styleType="zebra-rows"
-          style={{ width: "100%", height: "100%" }}
-        />
+        {isInitialLoading || isLoading ? (
+          <CenteredContent width={width} height={height}>
+            <ProgressRadial size="large" indeterminate={true} />
+            <Text>Loading table data...</Text>
+          </CenteredContent>
+        ) : (
+          <UiTable
+            columns={columns}
+            data={rows}
+            enableVirtualization={true}
+            emptyTableContent={
+              tableFilters.length > 0 ? 
+                <>No elements match the current filters.</> : 
+                noRowsState?.() ?? <>No rows.</>
+            }
+            onBottomReached={loadMoreRows}
+            density="extra-condensed"
+            styleType="zebra-rows"
+            style={{ width: "100%", height: "100%" }}
+          />
+        )}
       </div>
     </div>
   );
