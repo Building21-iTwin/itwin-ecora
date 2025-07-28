@@ -101,34 +101,62 @@ export function ColumnFilter({ columnId, columnLabel, field, placeholder }: Tabl
   return (
     <Popover
       content={
-        <Flex flexDirection="column" gap="sm" style={{ minWidth: 220 }}>
-          <Input
-            value={localValue}
-            onChange={e => setLocalValue(e.target.value)}
-            placeholder={placeholder || `Filter ${columnLabel}...`}
-            size="small"
-            style={{ fontSize: "12px" }}
-            onKeyDown={e => {
-              if (e.key === "Enter") applyFilter();
-              if (e.key === "Escape") setPopoverOpen(false);
-            }}
-            // eslint-disable-next-line jsx-a11y/no-autofocus
-            autoFocus
-          />
-          <Flex gap="xs" justifyContent="flex-end">
-            <Button size="small" styleType="borderless" onClick={() => setPopoverOpen(false)}>
-              Cancel
-            </Button>
-            <Button size="small" onClick={applyFilter} disabled={!localValue.trim()}>
-              Apply
-            </Button>
-            {isApplied && (
-              <Button size="small" styleType="borderless" onClick={removeFilter}>
-                <SvgClose />
+        <div style={{
+          minWidth: 240,
+          backgroundColor: "white",
+          border: "1px solid #e1e5e9",
+          borderRadius: "6px",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+          padding: "16px",
+          display: "flex",
+          flexDirection: "column"
+        }}>
+          <div style={{ marginBottom: "12px" }}>
+            <Text variant="small" style={{ 
+              fontWeight: 600, 
+              marginBottom: "8px", 
+              color: "#333",
+              display: "block"
+            }}>
+              Filter {columnLabel}
+            </Text>
+            <Input
+              value={localValue}
+              onChange={e => setLocalValue(e.target.value)}
+              placeholder={placeholder || `Enter filter value...`}
+              size="small"
+              style={{ 
+                fontSize: "12px",
+                width: "100%"
+              }}
+              onKeyDown={e => {
+                if (e.key === "Enter") applyFilter();
+                if (e.key === "Escape") setPopoverOpen(false);
+              }}
+              // eslint-disable-next-line jsx-a11y/no-autofocus
+              autoFocus
+            />
+          </div>
+          <div style={{
+            borderTop: "1px solid #e1e5e9",
+            paddingTop: "12px",
+            marginTop: "0"
+          }}>
+            <Flex gap="xs" justifyContent="flex-end" style={{ width: "100%" }}>
+              <Button size="small" styleType="borderless" onClick={() => setPopoverOpen(false)}>
+                Cancel
               </Button>
-            )}
-          </Flex>
-        </Flex>
+              <Button size="small" onClick={applyFilter} disabled={!localValue.trim()}>
+                Apply
+              </Button>
+              {isApplied && (
+                <Button size="small" styleType="borderless" onClick={removeFilter}>
+                  <SvgClose />
+                </Button>
+              )}
+            </Flex>
+          </div>
+        </div>
       }
       placement="bottom"
       visible={popoverOpen}
