@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-deprecated */
-import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
+import { createContext, type ReactNode,useCallback, useContext, useEffect, useState } from "react";
 import { type Field, type Keys, KeySet } from "@itwin/presentation-common";
 import { Presentation } from "@itwin/presentation-frontend";
 import { IModelApp } from "@itwin/core-frontend";
@@ -121,19 +121,16 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   const clearAllFilters = () => setTableFilters([]);
 
 
-  // Only update selection when model/category changes and no filters are present
-  useEffect(() => {
-    if (tableFilters.length === 0) {
-      void updateSelectedElements(selectedModelIds, selectedCategoryIds, tableFilters, availableFields);
-    }
+  const handleSelectionUpdate = useCallback(async () => {
+    // Always call updateSelectedElements regardless of filter state
+    // The function itself handles the logic for when to run the query
+    await updateSelectedElements(selectedModelIds, selectedCategoryIds, tableFilters, availableFields);
   }, [selectedModelIds, selectedCategoryIds, tableFilters, availableFields]);
 
-  // Only update selection when filters or availableFields change and filters are present
+  // Only update selection when model/category changes and no filters are present
   useEffect(() => {
-    if (tableFilters.length > 0) {
-      void updateSelectedElements(selectedModelIds, selectedCategoryIds, tableFilters, availableFields);
-    }
-  }, [selectedModelIds, selectedCategoryIds, tableFilters, availableFields]);
+    void handleSelectionUpdate
+  }, [handleSelectionUpdate]);
 
   // Update selected elements based on model, category, and filters
   const updateSelectedElements = async (modelIds: string[], categoryIds: string[], filters: TableFilter[], availFields: Field[]) => {
