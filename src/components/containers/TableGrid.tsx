@@ -18,7 +18,6 @@ import type {
   TableColumnDefinition,
   TableRowDefinition,
 } from "@itwin/presentation-components";
-import { CenteredContent } from "../UIProviders/CenteredContext";
 import { useSelection } from "../shared/SelectionContext";
 import { ActiveFiltersDisplay, ColumnFilter } from "./TableFilter";
 
@@ -47,7 +46,7 @@ export interface TableProps {
  * changes.
  */
 
-export function Table({ iModel, width, height, loadingContentState, noContentState, noRowsState }: TableProps) {
+export function Table({ iModel, width: _width, height: _height, loadingContentState, noContentState, noRowsState }: TableProps) {
   const { tableFilters, setAvailableFields } = useSelection();
   
   // Track loading state for initial data fetch
@@ -102,10 +101,22 @@ export function Table({ iModel, width, height, loadingContentState, noContentSta
   if (columns === undefined) {
     return (
       loadingContentState?.() ?? (
-        <CenteredContent width={width} height={height}>
-          <ProgressRadial size="large" indeterminate={true} />
-          Loading table content...
-        </CenteredContent>
+        <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
+          {/* Element Count Display */}
+          <div style={{ padding: "0.5rem", fontWeight: 500, fontSize: "0.95rem", color: "#333" }}>
+            <Flex alignItems="center" gap="sm">
+              <Text>Loading...</Text>
+            </Flex>
+          </div>
+          
+          {/* Loading Message Row */}
+          <div style={{ padding: "2rem", display: "flex", justifyContent: "center", alignItems: "center", flex: 1 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
+              <ProgressRadial size="large" indeterminate={true} />
+              <Text>Loading table content...</Text>
+            </div>
+          </div>
+        </div>
       )
     );
   }
@@ -113,9 +124,19 @@ export function Table({ iModel, width, height, loadingContentState, noContentSta
   if (columns.length === 0) {
     return (
       noContentState?.() ?? (
-        <CenteredContent width={width} height={height}>
-          There is no content for current selection.
-        </CenteredContent>
+        <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
+          {/* Element Count Display */}
+          <div style={{ padding: "0.5rem", fontWeight: 500, fontSize: "0.95rem", color: "#333" }}>
+            <Flex alignItems="center" gap="sm">
+              <Text>Showing 0 elements</Text>
+            </Flex>
+          </div>
+          
+          {/* No Content Message Row */}
+          <div style={{ padding: "2rem", display: "flex", justifyContent: "center", alignItems: "center", flex: 1 }}>
+            <Text>There is no content for current selection.</Text>
+          </div>
+        </div>
       )
     );
   }
@@ -141,10 +162,12 @@ export function Table({ iModel, width, height, loadingContentState, noContentSta
       {/* Table */}
       <div style={{ flex: 1, minHeight: 0 }}>
         {isInitialLoading || isLoading ? (
-          <CenteredContent width={width} height={height}>
-            <ProgressRadial size="large" indeterminate={true} />
-            <Text>Loading table data...</Text>
-          </CenteredContent>
+          <div style={{ padding: "2rem", display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
+              <ProgressRadial size="large" indeterminate={true} />
+              <Text>Loading table data...</Text>
+            </div>
+          </div>
         ) : (
           <UiTable
             columns={columns}
