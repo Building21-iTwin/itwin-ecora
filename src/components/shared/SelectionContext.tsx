@@ -132,9 +132,8 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
     // Build query with filters
     const query = elementQuery(modelIds, categoryIds, filters, availFields);
     // If no models or categories selected, do not override manual selection/emphasis
-    if (!query) {
-      return;
-    }
+    if (!query) return;
+
     const queryReader = iModel.createQueryReader(query, undefined, { rowFormat: QueryRowFormat.UseECSqlPropertyNames});
     const elements = await queryReader.toArray();
     const keySet = new KeySet(elements as Keys);
