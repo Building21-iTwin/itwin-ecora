@@ -9,7 +9,7 @@
 import * as React from "react";
 import { PropertyRecord } from "@itwin/appui-abstract";
 import { IModelConnection } from "@itwin/core-frontend";
-import { Flex, ProgressRadial, Text, Table as UiTable } from "@itwin/itwinui-react";
+import { Button, Flex, ProgressRadial, Text, Table as UiTable } from "@itwin/itwinui-react";
 import {
   TableCellRenderer,
   usePresentationTableWithUnifiedSelection,
@@ -20,6 +20,72 @@ import type {
 } from "@itwin/presentation-components";
 import { useSelection } from "../shared/SelectionContext";
 import { ActiveFiltersDisplay, ColumnFilter } from "./TableFilter";
+
+// Component to show warnings for selected categories and models
+function SelectionWarnings() {
+  const { selectedCategoryIds, selectedModelIds, setSelectedCategoryIds, setSelectedModelIds } = useSelection();
+  
+  const hasSelections = selectedCategoryIds.length > 0 || selectedModelIds.length > 0;
+  
+  if (!hasSelections) {
+    return null;
+  }
+
+  const clearAllSelections = () => {
+    setSelectedCategoryIds([]);
+    setSelectedModelIds([]);
+  };
+
+  return (
+    <div style={{ 
+      padding: "0.5rem", 
+      backgroundColor: "#fff3cd", 
+      border: "1px solid #ffeaa7", 
+      borderRadius: "4px",
+      marginBottom: "0.5rem"
+    }}>
+      <Flex alignItems="center" gap="sm" justifyContent="space-between">
+        <Flex alignItems="center" gap="sm">
+          <Text variant="small" style={{ fontWeight: 500, color: "#856404" }}>
+            ⚠️ Active selections filtering results:
+          </Text>
+          <Flex gap="xs" style={{ flexWrap: "wrap" }}>
+            {selectedCategoryIds.length > 0 && (
+              <Text variant="small" style={{ 
+                backgroundColor: "#fd7e14", 
+                color: "white", 
+                padding: "2px 6px", 
+                borderRadius: "4px",
+                fontSize: "11px"
+              }}>
+                {selectedCategoryIds.length} categor{selectedCategoryIds.length === 1 ? 'y' : 'ies'}
+              </Text>
+            )}
+            {selectedModelIds.length > 0 && (
+              <Text variant="small" style={{ 
+                backgroundColor: "#20c997", 
+                color: "white", 
+                padding: "2px 6px", 
+                borderRadius: "4px",
+                fontSize: "11px"
+              }}>
+                {selectedModelIds.length} model{selectedModelIds.length === 1 ? '' : 's'}
+              </Text>
+            )}
+          </Flex>
+        </Flex>
+        <Button 
+          size="small" 
+          styleType="borderless" 
+          onClick={clearAllSelections}
+          style={{ color: "#856404" }}
+        >
+          Clear selections
+        </Button>
+      </Flex>
+    </div>
+  );
+}
 
 export interface TableProps {
   /** Width of the property grid element. */
@@ -47,7 +113,7 @@ export interface TableProps {
  */
 
 export function Table({ iModel, width: _width, height: _height, loadingContentState, noContentState, noRowsState }: TableProps) {
-  const { tableFilters, setAvailableFields } = useSelection();
+  const { tableFilters, setAvailableFields, selectedCategoryIds, selectedModelIds } = useSelection();
   
   // Track loading state for initial data fetch
   const [isInitialLoading, setIsInitialLoading] = React.useState(true);
@@ -102,6 +168,14 @@ export function Table({ iModel, width: _width, height: _height, loadingContentSt
     return (
       loadingContentState?.() ?? (
         <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
+          {/* Selection Warnings - Always shown */}
+          <SelectionWarnings />
+          
+          {/* Active Filters Display - Always shown */}
+          <div style={{ padding: "0.5rem" }}>
+            <ActiveFiltersDisplay />
+          </div>
+          
           {/* Element Count Display */}
           <div style={{ padding: "0.5rem", fontWeight: 500, fontSize: "0.95rem", color: "#333" }}>
             <Flex alignItems="center" gap="sm">
@@ -125,6 +199,14 @@ export function Table({ iModel, width: _width, height: _height, loadingContentSt
     return (
       noContentState?.() ?? (
         <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
+          {/* Selection Warnings - Always shown */}
+          <SelectionWarnings />
+          
+          {/* Active Filters Display - Always shown */}
+          <div style={{ padding: "0.5rem" }}>
+            <ActiveFiltersDisplay />
+          </div>
+          
           {/* Element Count Display */}
           <div style={{ padding: "0.5rem", fontWeight: 500, fontSize: "0.95rem", color: "#333" }}>
             <Flex alignItems="center" gap="sm">
@@ -134,7 +216,11 @@ export function Table({ iModel, width: _width, height: _height, loadingContentSt
           
           {/* No Content Message Row */}
           <div style={{ padding: "2rem", display: "flex", justifyContent: "center", alignItems: "center", flex: 1 }}>
-            <Text>There is no content for current selection.</Text>
+            <Text>
+              {tableFilters.length > 0 || selectedCategoryIds.length > 0 || selectedModelIds.length > 0 
+                ? "No elements match the current filters or selections. Clear filters/selections above to see data." 
+                : "There is no content for current selection."}
+            </Text>
           </div>
         </div>
       )
@@ -143,12 +229,13 @@ export function Table({ iModel, width: _width, height: _height, loadingContentSt
 
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
-      {/* Active Filters Display */}
-      {tableFilters.length > 0 && (
-        <div style={{ padding: "0.5rem" }}>
-          <ActiveFiltersDisplay />
-        </div>
-      )}
+      {/* Selection Warnings */}
+      <SelectionWarnings />
+      
+      {/* Active Filters Display - Always shown */}
+      <div style={{ padding: "0.5rem" }}>
+        <ActiveFiltersDisplay />
+      </div>
       
       {/* Element Count Display */}
       <div style={{ padding: "0.5rem", fontWeight: 500, fontSize: "0.95rem", color: "#333" }}>
