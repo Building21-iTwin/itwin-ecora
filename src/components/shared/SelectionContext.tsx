@@ -132,9 +132,8 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
     // Build query with filters
     const query = elementQuery(modelIds, categoryIds, filters, availFields);
     // If no models or categories selected, do not override manual selection/emphasis
-    if (!query) {
-      return;
-    }
+    if (!query) return;
+
     const queryReader = iModel.createQueryReader(query, undefined, { rowFormat: QueryRowFormat.UseECSqlPropertyNames});
     const elements = await queryReader.toArray();
     const keySet = new KeySet(elements as Keys);
@@ -169,21 +168,23 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Update category/model selection handlers to pass availableFields
-  const onSelectedCategoryIdsChange = (categoryIds: string[]) => {
-    setSelectedCategoryIds(categoryIds);
-    // clear selection if no models or categories left
-    if (categoryIds.length === 0 && selectedModelIds.length === 0) {
-      clearSelectionAndEmphasis();
-    }
-  }
-
-  const onSelectedModelIdsChange = (modelIds: string[]) => {
-    setSelectedModelIds(modelIds);
-    // clear selection if no models or categories left
-    if (modelIds.length === 0 && selectedCategoryIds.length === 0) {
-      clearSelectionAndEmphasis();
+  const onSelectionChange = (type: "category" | "model", ids: string[]) => {
+    if (type === "category") {
+      setSelectedCategoryIds(ids);
+      if (ids.length === 0 && selectedModelIds.length === 0) {
+        clearSelectionAndEmphasis();
+      }
+    } else {
+      setSelectedModelIds(ids);
+      if (ids.length === 0 && selectedCategoryIds.length === 0) {
+        clearSelectionAndEmphasis();
+      }
     }
   };
+
+  // Wrappers for context compatibility
+  const setSelectedCategoryIdsWrapper = (ids: string[]) => onSelectionChange("category", ids);
+  const setSelectedModelIdsWrapper = (ids: string[]) => onSelectionChange("model", ids);
 
   return (
     <SelectionContext.Provider
@@ -191,9 +192,9 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
         selectedKeys,
         setSelectedKeys,
         selectedCategoryIds,
-        setSelectedCategoryIds: onSelectedCategoryIdsChange,
+        setSelectedCategoryIds: setSelectedCategoryIdsWrapper,
         selectedModelIds,
-        setSelectedModelIds: onSelectedModelIdsChange,
+        setSelectedModelIds: setSelectedModelIdsWrapper,
         tableFilters,
         setTableFilters,
         availableFields,
