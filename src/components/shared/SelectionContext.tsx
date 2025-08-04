@@ -168,21 +168,23 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Update category/model selection handlers to pass availableFields
-  const onSelectedCategoryIdsChange = (categoryIds: string[]) => {
-    setSelectedCategoryIds(categoryIds);
-    // clear selection if no models or categories left
-    if (categoryIds.length === 0 && selectedModelIds.length === 0) {
-      clearSelectionAndEmphasis();
-    }
-  }
-
-  const onSelectedModelIdsChange = (modelIds: string[]) => {
-    setSelectedModelIds(modelIds);
-    // clear selection if no models or categories left
-    if (modelIds.length === 0 && selectedCategoryIds.length === 0) {
-      clearSelectionAndEmphasis();
+  const onSelectionChange = (type: "category" | "model", ids: string[]) => {
+    if (type === "category") {
+      setSelectedCategoryIds(ids);
+      if (ids.length === 0 && selectedModelIds.length === 0) {
+        clearSelectionAndEmphasis();
+      }
+    } else {
+      setSelectedModelIds(ids);
+      if (ids.length === 0 && selectedCategoryIds.length === 0) {
+        clearSelectionAndEmphasis();
+      }
     }
   };
+
+  // Wrappers for context compatibility
+  const setSelectedCategoryIdsWrapper = (ids: string[]) => onSelectionChange("category", ids);
+  const setSelectedModelIdsWrapper = (ids: string[]) => onSelectionChange("model", ids);
 
   return (
     <SelectionContext.Provider
@@ -190,9 +192,9 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
         selectedKeys,
         setSelectedKeys,
         selectedCategoryIds,
-        setSelectedCategoryIds: onSelectedCategoryIdsChange,
+        setSelectedCategoryIds: setSelectedCategoryIdsWrapper,
         selectedModelIds,
-        setSelectedModelIds: onSelectedModelIdsChange,
+        setSelectedModelIds: setSelectedModelIdsWrapper,
         tableFilters,
         setTableFilters,
         availableFields,
