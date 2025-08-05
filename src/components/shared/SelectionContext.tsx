@@ -4,8 +4,8 @@ import { type Field, type Keys, KeySet } from "@itwin/presentation-common";
 import { Presentation } from "@itwin/presentation-frontend";
 import { IModelApp } from "@itwin/core-frontend";
 import { QueryRowFormat } from "@itwin/core-common";
+import { getFieldTypeInfo } from "../containers/TableFilter";
 
-// Define table filter type
 export interface TableFilter {
   columnId: any;
   id: string;
@@ -20,7 +20,6 @@ export interface SelectionState {
   setSelectedCategoryIds: (ids: string[]) => void;
   selectedModelIds: string[];
   setSelectedModelIds: (ids: string[]) => void;
-  // Table filtering functionality
   tableFilters: TableFilter[];
   setTableFilters: (filters: TableFilter[]) => void;
   availableFields: Field[];
@@ -30,65 +29,129 @@ export interface SelectionState {
 
 const SelectionContext = createContext<SelectionState | undefined>(undefined);
 
-// Type guard to check if a Field has 'properties' (PropertiesField)
-function isPropertiesField(field: Field): field is Field & { properties: any[] } {
-  return typeof (field as any).properties !== 'undefined';
-}
 
-// Helper to check if a property is valid for filtering (exists on bis.GeometricElement3d)
-function isValidFilterProperty(filter: TableFilter, availableFields: Field[]): boolean {
-  if (!filter.field || !isPropertiesField(filter.field)) return false;
-  // Only allow properties that are direct properties of bis.GeometricElement3d
-  // and are string type (as per TableFilter.tsx logic)
-  const property = filter.field.properties?.[0]?.property;
-  return !!property && property.type === "string" && availableFields.some(f => f.name === filter.field?.name);
-}
-
-// Build WHERE clause from tableFilters, only using valid properties
-export function buildFilterWhereClause(tableFilters: TableFilter[], availableFields: Field[]): string {
+// Build WHERE clause from tableFilters (simple LIKE filter)
+export function buildFilterWhereClause(tableFilters: TableFilter[]): string {
   if (!tableFilters.length) return "";
   return tableFilters
-    .filter(filter => isValidFilterProperty(filter, availableFields))
     .map(filter => {
-      // Use the actual property name from the field
-      let propertyName = filter.id;
-      if (filter.field && isPropertiesField(filter.field)) {
-        const property = filter.field.properties?.[0]?.property;
-        if (property?.name) {
-          propertyName = property.name;
-        }
-      }
-      // Escape single quotes in the filter value and use proper SQL LIKE syntax
       const escapedValue = filter.value.replace(/'/g, "''");
-      return `${propertyName} LIKE '%${escapedValue}%'`;
+      return `${filter.id} LIKE '%${escapedValue}%'`;
     })
     .join(" AND ");
 }
 
-// Updated elementQuery to accept availableFields and only use valid filters
-const elementQuery = (modelIds: string[], categoryIds: string[], filters: TableFilter[], availFields: Field[]) => {
-  // If neither model nor category is selected, return empty query (do not run)
-  if (modelIds.length === 0 && categoryIds.length === 0) {
+
+/**
+ * Builds an ECSQL query string to select elements based on selected models, categories, and table filters.
+ *
+ * @param modelIds - Array of selected model ECInstanceIds
+ * @param categoryIds - Array of selected category ECInstanceIds
+ * @param filters - Array of TableFilter objects (column filters)
+ * @param _availFields - Array of available Field objects (not used here)
+ * @returns ECSQL query string or empty string if no selection
+ *
+ * Example output:
+ * SELECT ... FROM bis.GeometricElement3d e JOIN bis.Model m ... WHERE ...
+ */
+const elementQuery = (
+  modelIds: string[],
+  categoryIds: string[],
+  filters: TableFilter[],
+  _availFields: Field[]
+) => {
+  
+  // If no models, categories, and no filters, return empty string (no query)
+  if (modelIds.length === 0 && categoryIds.length === 0 && filters.length === 0) {
+    
     return "";
   }
-  let query = "SELECT ec_classname(ECClassId) as className, ECInstanceId as id FROM bis.GeometricElement3d";
-  const criteria: string[] = [];
-  if (modelIds.length > 0) {
-    criteria.push(`Model.Id IN (${modelIds.map((id) => `${id}`).join(",")})`);
+
+  // Split filters into primitive field filters and navigation property filters
+  // If field is missing, treat as primitive string filter
+  const fieldPropFilters = filters.filter(f => {
+    if (!f.field) return !!f.value;
+    const info = getFieldTypeInfo(f.field);
+    return info.type === "string" && !info.isNavigation && f.value;
+  });
+  // Navigation property filters: category, model, typedefinition, parent
+  const navPropFilters = filters.filter(f => {
+    if (!f.field) return false;
+    const info = getFieldTypeInfo(f.field);
+    return info.isNavigation && f.value;
+  });
+  // ...existing code...
+
+  // Main table and alias
+  const baseTable = "bis.GeometricElement3d";
+  const baseAlias = "e";
+  // Always select id and label, plus any primitive field filters
+  const selectFields = [
+    "e.ECInstanceId as id",
+    "e.UserLabel as label",
+    ...fieldPropFilters.map(f => `e.${f.id}`)
+  ];
+
+  // Only add joins if navPropFilters exist
+  let joins: { table: string; alias: string; joinOn: string }[] = [];
+  if (navPropFilters.length > 0) {
+    // Always join Model and Category if nav props are present
+    joins = [
+      { table: "bis.Model", alias: "m", joinOn: "e.Model.Id = m.ECInstanceId" },
+      { table: "bis.Category", alias: "c", joinOn: "e.Category.Id = c.ECInstanceId" }
+    ];
+    // Add additional joins for nav prop filters (e.g., TypeDefinition, Parent)
+    for (const f of navPropFilters) {
+      const fieldName = f.id.toLowerCase();
+      if (fieldName.includes("typedefinition") && !joins.some(j => j.alias === "t")) {
+        joins.push({ table: "bis.PhysicalType", alias: "t", joinOn: "e.TypeDefinition.Id = t.ECInstanceId" });
+      }
+      if (fieldName.includes("parent") && !joins.some(j => j.alias === "p")) {
+        joins.push({ table: "bis.Element", alias: "p", joinOn: "e.Parent.Id = p.ECInstanceId" });
+      }
+    }
   }
+
+  // Build WHERE clause
+  const whereClauses: string[] = [];
+  // Primitive field filters (string properties)
+  for (const f of fieldPropFilters) {
+    whereClauses.push(`e.${f.id} LIKE '%${f.value.replace(/'/g, "''")}%'`);
+  }
+  // Category id filter
   if (categoryIds.length > 0) {
-    criteria.push(`Category.Id IN (${categoryIds.map((id) => `${id}`).join(",")})`);
+    whereClauses.push(`e.Category.Id IN (${categoryIds.join(",")})`);
   }
-  const filterClause = buildFilterWhereClause(filters, availFields);
-  if (filterClause) {
-    criteria.push(filterClause);
+  // Model id filter
+  if (modelIds.length > 0) {
+    whereClauses.push(`e.Model.Id IN (${modelIds.join(",")})`);
   }
-  if (criteria.length > 0) {
-    query += ` WHERE ${criteria.join(" AND ")}`;
+  // Navigation property filters (if any)
+  if (navPropFilters.length > 0) {
+    for (const f of navPropFilters) {
+      const fieldName = f.id.toLowerCase();
+      if (fieldName.includes("category") || fieldName === "category") {
+        whereClauses.push(`c.UserLabel LIKE '%${f.value.replace(/'/g, "''")}%'`);
+      } else if (fieldName.includes("model") || fieldName === "model") {
+        whereClauses.push(`m.UserLabel LIKE '%${f.value.replace(/'/g, "''")}%'`);
+      } else if (fieldName.includes("typedefinition") || fieldName === "typedefinition") {
+        whereClauses.push(`t.UserLabel LIKE '%${f.value.replace(/'/g, "''")}%'`);
+      } else if (fieldName.includes("parent") || fieldName === "parent") {
+        whereClauses.push(`p.UserLabel LIKE '%${f.value.replace(/'/g, "''")}%'`);
+      }
+    }
   }
-  // If a model or category is selected, run the query as normal
+
+  // Build query string
+  let query = `SELECT ${selectFields.join(", ")} FROM ${baseTable} ${baseAlias}`;
+  for (const join of joins) {
+    query += ` JOIN ${join.table} ${join.alias} ON ${join.joinOn}`;
+  }
+  if (whereClauses.length > 0) {
+    query += ` WHERE ${whereClauses.join(" AND ")}`;
+  }
   return query;
-}
+};
 
 export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
@@ -131,15 +194,14 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
 
     // Build query with filters
     const query = elementQuery(modelIds, categoryIds, filters, availFields);
-    // If no models or categories selected, do not override manual selection/emphasis
+    
+    // If no query (no selection and no filters), do not override manual selection/emphasis
     if (!query) return;
 
     const queryReader = iModel.createQueryReader(query, undefined, { rowFormat: QueryRowFormat.UseECSqlPropertyNames});
     const elements = await queryReader.toArray();
     const keySet = new KeySet(elements as Keys);
-
     Presentation.selection.replaceSelection("My Selection", iModel, keySet);
-
     // Emphasize all selected elements
     const vp = IModelApp.viewManager.selectedView;
     if (vp) {
@@ -155,14 +217,11 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   const clearSelectionAndEmphasis = () => {
     const iModel = IModelApp.viewManager.selectedView?.iModel;
     if (!iModel) return;
-    const emptyKeySet = new KeySet();
-    Presentation.selection.replaceSelection("My Selection", iModel, emptyKeySet);
+    Presentation.selection.replaceSelection("My Selection", iModel, new KeySet());
     const vp = IModelApp.viewManager.selectedView;
     if (vp) {
-      // Dynamically import EmphasizeElements and clear emphasis
       void import("@itwin/core-frontend").then(({ EmphasizeElements }) => {
-        const emphasize = EmphasizeElements.getOrCreate(vp);
-        emphasize.clearEmphasizedElements(vp);
+        EmphasizeElements.getOrCreate(vp).clearEmphasizedElements(vp);
       });
     }
   };
@@ -171,20 +230,16 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   const onSelectionChange = (type: "category" | "model", ids: string[]) => {
     if (type === "category") {
       setSelectedCategoryIds(ids);
-      if (ids.length === 0 && selectedModelIds.length === 0) {
-        clearSelectionAndEmphasis();
-      }
     } else {
       setSelectedModelIds(ids);
-      if (ids.length === 0 && selectedCategoryIds.length === 0) {
-        clearSelectionAndEmphasis();
-      }
+    }
+    if (ids.length === 0 && (type === "category" ? selectedModelIds.length : selectedCategoryIds.length) === 0) {
+      clearSelectionAndEmphasis();
     }
   };
 
-  // Wrappers for context compatibility
-  const setSelectedCategoryIdsWrapper = (ids: string[]) => onSelectionChange("category", ids);
-  const setSelectedModelIdsWrapper = (ids: string[]) => onSelectionChange("model", ids);
+  // Generic wrapper for selection change
+  const setSelectedIdsWrapper = (type: "category" | "model") => (ids: string[]) => onSelectionChange(type, ids);
 
   return (
     <SelectionContext.Provider
@@ -192,9 +247,9 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
         selectedKeys,
         setSelectedKeys,
         selectedCategoryIds,
-        setSelectedCategoryIds: setSelectedCategoryIdsWrapper,
+        setSelectedCategoryIds: setSelectedIdsWrapper("category"),
         selectedModelIds,
-        setSelectedModelIds: setSelectedModelIdsWrapper,
+        setSelectedModelIds: setSelectedIdsWrapper("model"),
         tableFilters,
         setTableFilters,
         availableFields,
@@ -214,3 +269,4 @@ export const useSelection = () => {
   }
   return context;
 };
+

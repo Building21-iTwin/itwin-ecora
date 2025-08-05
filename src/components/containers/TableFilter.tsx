@@ -24,14 +24,37 @@ export interface TableFilterProps {
   placeholder?: string;
 }
 
+// Utility: get type info and filterability for a field
+export function getFieldTypeInfo(field?: Field) {
+  if (!field) return { type: undefined, isNavigation: false, target: undefined, isFilterable: false };
+  const property = field.isPropertiesField?.() ? field.properties?.[0]?.property : undefined;
+  const relatedClassPath = (field as any).relatedClassPath;
+  const pathFromRoot = (field as any).pathFromRoot;
+  const isRelatedInstanceSpecification = (field as any).type === "relatedInstanceSpecification";
+  const fieldName = field.name?.toLowerCase() || "";
+  const isNavigation = !!(relatedClassPath || pathFromRoot || isRelatedInstanceSpecification || fieldName.includes("category") || fieldName.includes("model") || fieldName.includes("element"));
+  const isStringProperty = property?.type === "string";
+  const isFilterable = isStringProperty || isNavigation;
+  let target;
+  if (Array.isArray(relatedClassPath) && relatedClassPath.length > 0) {
+    target = relatedClassPath[relatedClassPath.length - 1]?.targetClassName;
+  }
+  return {
+    type: property?.type ?? (field as any).type,
+    isNavigation,
+    target,
+    isFilterable,
+  };
+}
+
 export function ColumnFilter({ columnId, columnLabel, field, placeholder }: TableFilterProps) {
   const { tableFilters, setTableFilters } = useSelection();
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [localValue, setLocalValue] = useState("");
   const [isApplied, setIsApplied] = useState(false);
 
-  // Find existing filter for this column
-  const existingFilter = useMemo(() => 
+// Find existing filter for this column
+  const existingFilter = useMemo(() =>
     tableFilters.find(filter => filter.id === columnId),
     [tableFilters, columnId]
   );
@@ -47,15 +70,8 @@ export function ColumnFilter({ columnId, columnLabel, field, placeholder }: Tabl
     }
   }, [existingFilter]);
 
-  // Check if field supports filtering
-  const isFilterable = useMemo(() => {
-    if (!field?.isPropertiesField()) {
-      return false;
-    }
-    // For now, only support string properties for LIKE queries
-    const property = field.properties?.[0]?.property;
-    return property?.type === "string";
-  }, [field]);
+  // Check if field supports filtering (string property or nav prop)
+  const { isFilterable } = useMemo(() => getFieldTypeInfo(field), [field]);
 
   const applyFilter = useCallback(() => {
     const trimmedValue = localValue.trim();
