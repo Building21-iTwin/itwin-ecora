@@ -60,7 +60,7 @@ export function buildFilterWhereClause(tableFilters: TableFilter[], availableFie
       }
       // Escape single quotes in the filter value and use proper SQL LIKE syntax
       const escapedValue = filter.value.replace(/'/g, "''");
-      return `$->'[${propertyName}]' LIKE '%${escapedValue}%'`;
+      return `${propertyName} LIKE '%${escapedValue}%'`;
     })
     .join(" AND ");
 }
