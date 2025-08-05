@@ -80,7 +80,6 @@ const elementQuery = (
     const info = getFieldTypeInfo(f.field);
     return info.isNavigation && f.value;
   });
-  // ...existing code...
 
   // Main table and alias
   const baseTable = "bis.GeometricElement3d";
@@ -88,21 +87,35 @@ const elementQuery = (
   // Always select id and label, plus any primitive field filters
   const selectFields = [
     "e.ECInstanceId as id",
-    "e.UserLabel as label",
+    "ec_classname(e.ECClassId) as className",
     ...fieldPropFilters.map(f => `e.${f.id}`)
   ];
+  // If model nav filter present, add me.UserLabel to SELECT
+  if (navPropFilters.some(f => {
+    const fieldName = f.id.toLowerCase();
+    return fieldName.includes("model") || fieldName === "model";
+  })) {
+    selectFields.push("me.UserLabel");
+  }
 
   // Only add joins if navPropFilters exist
   let joins: { table: string; alias: string; joinOn: string }[] = [];
+  // Removed unused variables hasModelNavFilter and hasCategoryNavFilter
   if (navPropFilters.length > 0) {
     // Always join Model and Category if nav props are present
     joins = [
       { table: "bis.Model", alias: "m", joinOn: "e.Model.Id = m.ECInstanceId" },
       { table: "bis.Category", alias: "c", joinOn: "e.Category.Id = c.ECInstanceId" }
     ];
-    // Add additional joins for nav prop filters (e.g., TypeDefinition, Parent)
     for (const f of navPropFilters) {
       const fieldName = f.id.toLowerCase();
+      if ((fieldName.includes("model") || fieldName === "model") && !joins.some(j => j.alias === "me")) {
+        joins.push({ table: "bis.Element", alias: "me", joinOn: "m.ModeledElement.Id = me.ECInstanceId" });
+      }
+      // No need to track hasCategoryNavFilter
+      if ((fieldName.includes("category") || fieldName === "category")) {
+        // No-op, just for logic completeness
+      }
       if (fieldName.includes("typedefinition") && !joins.some(j => j.alias === "t")) {
         joins.push({ table: "bis.PhysicalType", alias: "t", joinOn: "e.TypeDefinition.Id = t.ECInstanceId" });
       }
@@ -131,9 +144,11 @@ const elementQuery = (
     for (const f of navPropFilters) {
       const fieldName = f.id.toLowerCase();
       if (fieldName.includes("category") || fieldName === "category") {
-        whereClauses.push(`c.UserLabel LIKE '%${f.value.replace(/'/g, "''")}%'`);
+        const val = f.value.replace(/'/g, "''");
+        whereClauses.push(`(c.UserLabel LIKE '%${val}%' OR c.CodeValue LIKE '%${val}%')`);
       } else if (fieldName.includes("model") || fieldName === "model") {
-        whereClauses.push(`m.UserLabel LIKE '%${f.value.replace(/'/g, "''")}%'`);
+        const val = f.value.replace(/'/g, "''");
+        whereClauses.push(`(me.UserLabel LIKE '%${val}%' OR me.CodeValue LIKE '%${val}%')`);
       } else if (fieldName.includes("typedefinition") || fieldName === "typedefinition") {
         whereClauses.push(`t.UserLabel LIKE '%${f.value.replace(/'/g, "''")}%'`);
       } else if (fieldName.includes("parent") || fieldName === "parent") {
