@@ -11,7 +11,7 @@
  */
 import React, { useEffect, useState } from "react";
 import { IModelApp } from "@itwin/core-frontend";
-import { Button, Flex, Input } from "@itwin/itwinui-react";
+import { Button, Flex, Input, ProgressRadial } from "@itwin/itwinui-react";
 
 interface SelectableListProps {
   query: string;
@@ -36,6 +36,9 @@ export function SelectableListComponent(props: SelectableListProps) {
   // List of items to display (id/label pairs)
   const [items, setItems] = useState<{ id: string; label: string }[]>([]);
   
+  // Loading state for data fetching (only set during fetch, not selection)
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  
   // Search filter string
   const [searchString, setSearchString] = useState<string>("");
   // Current iModel reference (updates on viewport change)
@@ -48,10 +51,12 @@ export function SelectableListComponent(props: SelectableListProps) {
       setIModel(newIModel);
       if (!newIModel) {
         setItems([]);
+        setIsLoading(false);
         if (selectedIds.length > 0) {
           setSelectedIds([]);
         }
       }
+      // Do NOT set isLoading here; only set during fetch
     };
     IModelApp.viewManager.onSelectedViewportChanged.addListener(updateIModel);
     updateIModel();
@@ -66,9 +71,14 @@ export function SelectableListComponent(props: SelectableListProps) {
     let cancelled = false;
     const getItems = async () => {
       if (!iModel) {
-        if (!cancelled) setItems([]);
+        if (!cancelled) {
+          setItems([]);
+          setIsLoading(false);
+        }
         return;
       }
+      // Start loading only when fetching
+      setIsLoading(true);
       try {
         const queryReader = iModel.createQueryReader(query);
         const rows = await queryReader.toArray();
@@ -79,8 +89,12 @@ export function SelectableListComponent(props: SelectableListProps) {
           label: row[labelKey] || row[1] || `${className} ${row[idKey] || row[0]}`,
         }));
         setItems(list);
+        setIsLoading(false);
       } catch {
-        if (!cancelled) setItems([]);
+        if (!cancelled) {
+          setItems([]);
+          setIsLoading(false);
+        }
       }
     };
     void getItems();
@@ -192,7 +206,21 @@ export function SelectableListComponent(props: SelectableListProps) {
         )}
       </Flex>
       <div style={{ flex: 1, overflow: "auto", padding: "0.25rem" }}>
-        {items.length === 0 ? (
+        {isLoading ? (
+          <div style={{ 
+            padding: "2rem", 
+            textAlign: "center", 
+            display: "flex", 
+            flexDirection: "column", 
+            alignItems: "center", 
+            gap: "1rem" 
+          }}>
+            <ProgressRadial size="large" indeterminate={true} />
+            <div style={{ color: "#666", fontSize: "0.875rem" }}>
+              Loading {className.split(':')[1] || 'items'}...
+            </div>
+          </div>
+        ) : items.length === 0 ? (
           <div style={{ padding: "1rem", textAlign: "center", color: "#666" }}>
             {iModel ? "No items found" : "No iModel loaded"}
           </div>

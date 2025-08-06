@@ -24,14 +24,37 @@ export interface TableFilterProps {
   placeholder?: string;
 }
 
+// Utility: get type info and filterability for a field
+export function getFieldTypeInfo(field?: Field) {
+  if (!field) return { type: undefined, isNavigation: false, target: undefined, isFilterable: false };
+  const property = field.isPropertiesField?.() ? field.properties?.[0]?.property : undefined;
+  const relatedClassPath = (field as any).relatedClassPath;
+  const pathFromRoot = (field as any).pathFromRoot;
+  const isRelatedInstanceSpecification = (field as any).type === "relatedInstanceSpecification";
+  const fieldName = field.name?.toLowerCase() || "";
+  const isNavigation = !!(relatedClassPath || pathFromRoot || isRelatedInstanceSpecification || fieldName.includes("category") || fieldName.includes("model") || fieldName.includes("element"));
+  const isStringProperty = property?.type === "string";
+  const isFilterable = isStringProperty || isNavigation;
+  let target;
+  if (Array.isArray(relatedClassPath) && relatedClassPath.length > 0) {
+    target = relatedClassPath[relatedClassPath.length - 1]?.targetClassName;
+  }
+  return {
+    type: property?.type ?? (field as any).type,
+    isNavigation,
+    target,
+    isFilterable,
+  };
+}
+
 export function ColumnFilter({ columnId, columnLabel, field, placeholder }: TableFilterProps) {
   const { tableFilters, setTableFilters } = useSelection();
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [localValue, setLocalValue] = useState("");
   const [isApplied, setIsApplied] = useState(false);
 
-  // Find existing filter for this column
-  const existingFilter = useMemo(() => 
+// Find existing filter for this column
+  const existingFilter = useMemo(() =>
     tableFilters.find(filter => filter.id === columnId),
     [tableFilters, columnId]
   );
@@ -47,15 +70,8 @@ export function ColumnFilter({ columnId, columnLabel, field, placeholder }: Tabl
     }
   }, [existingFilter]);
 
-  // Check if field supports filtering
-  const isFilterable = useMemo(() => {
-    if (!field?.isPropertiesField()) {
-      return false;
-    }
-    // For now, only support string properties for LIKE queries
-    const property = field.properties?.[0]?.property;
-    return property?.type === "string";
-  }, [field]);
+  // Check if field supports filtering (string property or nav prop)
+  const { isFilterable } = useMemo(() => getFieldTypeInfo(field), [field]);
 
   const applyFilter = useCallback(() => {
     const trimmedValue = localValue.trim();
@@ -180,59 +196,69 @@ export function ColumnFilter({ columnId, columnLabel, field, placeholder }: Tabl
 export function ActiveFiltersDisplay() { 
   const { tableFilters, setTableFilters, clearAllFilters } = useSelection();
 
-  if (tableFilters.length === 0) {
-    return null;
-  }
-
   return (
-    <Flex alignItems="center" gap="sm" style={{ padding: "8px", backgroundColor: "#f8f9fa", borderRadius: "4px" }}>
+    <Flex alignItems="center" gap="sm" style={{ 
+      padding: "8px", 
+      backgroundColor: tableFilters.length > 0 ? "#f8f9fa" : "#f1f3f5", 
+      borderRadius: "4px",
+      border: tableFilters.length > 0 ? "1px solid #dee2e6" : "1px solid #e9ecef"
+    }}>
       <Text variant="small" style={{ fontWeight: 500 }}>
-        Active filters:
+        {tableFilters.length > 0 ? "Active filters:" : "No active filters"}
       </Text>
-      <Flex gap="xs" style={{ flexWrap: "wrap" }}>
-        {tableFilters.map((filter) => (
-          <span 
-            key={filter.id}
-            style={{ 
-              backgroundColor: "#0073e6", 
-              color: "white", 
-              fontSize: "11px", 
-              padding: "2px 6px",
-              borderRadius: "4px",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "4px"
-            }}
+      {tableFilters.length > 0 ? (
+        <>
+          <Flex gap="xs" style={{ flexWrap: "wrap" }}>
+            {tableFilters.map((filter) => (
+              <span 
+                key={filter.id}
+                style={{ 
+                  backgroundColor: "#0073e6", 
+                  color: "white", 
+                  fontSize: "11px", 
+                  padding: "2px 6px",
+                  borderRadius: "4px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px"
+                }}
+              >
+                {filter.id}: &ldquo;{filter.value}&rdquo;
+                <IconButton
+                  size="small"
+                  styleType="borderless"
+                  onClick={() => {
+                    const updatedFilters = tableFilters.filter(f => f.id !== filter.id);
+                    setTableFilters(updatedFilters);
+                  }}
+                  style={{ 
+                    marginLeft: "4px", 
+                    padding: "1px",
+                    minHeight: "14px",
+                    minWidth: "14px",
+                    color: "white"
+                  }}
+                >
+                  <SvgClose style={{ fontSize: "8px" }} />
+                </IconButton>
+              </span>
+            ))}
+          </Flex>
+          <IconButton
+            size="small"
+            styleType="borderless"
+            onClick={clearAllFilters}
+            label="Clear all filters"
+            style={{ marginLeft: "auto" }}
           >
-            {filter.id}: &ldquo;{filter.value}&rdquo;
-            <IconButton
-              size="small"
-              styleType="borderless"
-              onClick={() => {
-                const updatedFilters = tableFilters.filter(f => f.id !== filter.id);
-                setTableFilters(updatedFilters);
-              }}
-              style={{ 
-                marginLeft: "4px", 
-                padding: "1px",
-                minHeight: "14px",
-                minWidth: "14px",
-                color: "white"
-              }}
-            >
-              <SvgClose style={{ fontSize: "8px" }} />
-            </IconButton>
-          </span>
-        ))}
-      </Flex>
-      <IconButton
-        size="small"
-        styleType="borderless"
-        onClick={clearAllFilters}
-        label="Clear all filters"
-      >
-        <SvgClose />
-      </IconButton>
+            <SvgClose />
+          </IconButton>
+        </>
+      ) : (
+        <Text variant="small" style={{ color: "#6c757d", fontStyle: "italic" }}>
+          Use column filter buttons to filter table data
+        </Text>
+      )}
     </Flex>
   );
 }
