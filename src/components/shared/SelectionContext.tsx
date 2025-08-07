@@ -29,9 +29,6 @@ export interface SelectionState {
 
 const SelectionContext = createContext<SelectionState | undefined>(undefined);
 
-
-
-
 /**
  * Builds an ECSQL query string to select elements based on selected models, categories, and table filters.
  *
