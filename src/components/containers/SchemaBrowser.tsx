@@ -120,7 +120,7 @@ export function SchemaBrowser({ iModel }: SchemaBrowserProps) {
       {/* Header */}
       <div style={{ padding: "1rem", borderBottom: "1px solid #e1e5e9" }}>
         <Flex alignItems="center" justifyContent="space-between">
-          <Text variant="title">Schema & Class Browser</Text>
+          <Text variant="title">Class Browser</Text>
           <Flex gap="sm" alignItems="center">
             <Tooltip content="Refresh schema classes">
               <IconButton

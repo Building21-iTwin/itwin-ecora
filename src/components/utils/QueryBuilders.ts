@@ -33,7 +33,7 @@ export const elementQuery = (
   _availFields: Field[],
   selectedClassName?: string
 ) => {
-  // If no models, categories, no filters, and no class selection, return empty string (no query)
+  // If no models, categories, filters, or class selection, return empty string (no query)
   if (modelIds.length === 0 && categoryIds.length === 0 && filters.length === 0 && !selectedClassName) {
     return "";
   }
@@ -198,20 +198,6 @@ export interface QueryContext {
 export const enhancedElementQuery = (context: QueryContext, availFields: Field[]) => {
   const { modelIds, categoryIds, filters, selectedClassName } = context;
   
-  // Start with base query
-  let query = elementQuery(modelIds, categoryIds, filters, availFields);
-  
-  // Add class filter if specified
-  if (selectedClassName) {
-    const hasWhere = query.includes("WHERE");
-    const classFilter = `ec_classname(e.ECClassId) = '${selectedClassName.replace(/'/g, "''")}'`;
-    
-    if (hasWhere) {
-      query = query.replace("WHERE", `WHERE ${classFilter} AND`);
-    } else {
-      query += ` WHERE ${classFilter}`;
-    }
-  }
-  
-  return query;
+  // The elementQuery function already handles selectedClassName, so just call it directly
+  return elementQuery(modelIds, categoryIds, filters, availFields, selectedClassName);
 };

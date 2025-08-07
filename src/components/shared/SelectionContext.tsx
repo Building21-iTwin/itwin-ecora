@@ -76,11 +76,13 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   const clearAllFilters = () => setTableFilters([]);
 
   useEffect(() => {
+    
     void updateSelectedElements(selectedModelIds, selectedCategoryIds, tableFilters, availableFields, selectedClassName);
   }, [selectedModelIds, selectedCategoryIds, tableFilters, availableFields, selectedClassName]);
 
   // Update selected elements based on model, category, and filters
   const updateSelectedElements = async (modelIds: string[], categoryIds: string[], filters: TableFilter[], availFields: Field[], className?: string) => {
+    
     const iModel = IModelApp.viewManager.selectedView?.iModel;
     if (!iModel) return;
 
@@ -88,7 +90,9 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
     const query = elementQuery(modelIds, categoryIds, filters, availFields, className);
     
     // If no query (no selection and no filters), do not override manual selection/emphasis
-    if (!query) return;
+    if (!query) {
+      return;
+    }
 
     const queryReader = iModel.createQueryReader(query, undefined, { rowFormat: QueryRowFormat.UseECSqlPropertyNames});
     const elements = await queryReader.toArray();
