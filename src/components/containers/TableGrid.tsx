@@ -23,9 +23,9 @@ import { ActiveFiltersDisplay, ColumnFilter } from "./TableFilter";
 
 // Component to show warnings for selected categories and models
 function SelectionWarnings() {
-  const { selectedCategoryIds, selectedModelIds, setSelectedCategoryIds, setSelectedModelIds } = useSelection();
+  const { selectedCategoryIds, selectedModelIds, selectedClassName, setSelectedCategoryIds, setSelectedModelIds, setSelectedClassName } = useSelection();
   
-  const hasSelections = selectedCategoryIds.length > 0 || selectedModelIds.length > 0;
+  const hasSelections = selectedCategoryIds.length > 0 || selectedModelIds.length > 0 || selectedClassName;
   
   if (!hasSelections) {
     return null;
@@ -34,6 +34,7 @@ function SelectionWarnings() {
   const clearAllSelections = () => {
     setSelectedCategoryIds([]);
     setSelectedModelIds([]);
+    setSelectedClassName(undefined);
   };
 
   return (
@@ -70,6 +71,17 @@ function SelectionWarnings() {
                 fontSize: "11px"
               }}>
                 {selectedModelIds.length} model{selectedModelIds.length === 1 ? '' : 's'}
+              </Text>
+            )}
+            {selectedClassName && (
+              <Text variant="small" style={{ 
+                backgroundColor: "#6f42c1", 
+                color: "white", 
+                padding: "2px 6px", 
+                borderRadius: "4px",
+                fontSize: "11px"
+              }}>
+                Class: {selectedClassName.split('.').pop() || selectedClassName}
               </Text>
             )}
           </Flex>
@@ -113,7 +125,7 @@ export interface TableProps {
  */
 
 export function Table({ iModel, width: _width, height: _height, loadingContentState, noContentState, noRowsState }: TableProps) {
-  const { tableFilters, setAvailableFields, selectedCategoryIds, selectedModelIds } = useSelection();
+  const { tableFilters, setAvailableFields, selectedCategoryIds, selectedModelIds, selectedClassName } = useSelection();
   
   // Track loading state for initial data fetch
   const [isInitialLoading, setIsInitialLoading] = React.useState(true);
@@ -217,7 +229,7 @@ export function Table({ iModel, width: _width, height: _height, loadingContentSt
           {/* No Content Message Row */}
           <div style={{ padding: "2rem", display: "flex", justifyContent: "center", alignItems: "center", flex: 1 }}>
             <Text>
-              {tableFilters.length > 0 || selectedCategoryIds.length > 0 || selectedModelIds.length > 0 
+              {tableFilters.length > 0 || selectedCategoryIds.length > 0 || selectedModelIds.length > 0 || selectedClassName
                 ? "No elements match the current filters or selections. Clear filters/selections above to see data." 
                 : "There is no content for current selection."}
             </Text>

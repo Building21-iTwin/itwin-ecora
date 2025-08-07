@@ -20,6 +20,7 @@ export function buildFilterWhereClause(tableFilters: TableFilter[]): string {
  * @param categoryIds - Array of selected category ECInstanceIds
  * @param filters - Array of TableFilter objects (column filters)
  * @param _availFields - Array of available Field objects (not used here)
+ * @param selectedClassName - Optional class name to filter by
  * @returns ECSQL query string or empty string if no selection
  *
  * Example output:
@@ -29,10 +30,11 @@ export const elementQuery = (
   modelIds: string[],
   categoryIds: string[],
   filters: TableFilter[],
-  _availFields: Field[]
+  _availFields: Field[],
+  selectedClassName?: string
 ) => {
-  // If no models, categories, and no filters, return empty string (no query)
-  if (modelIds.length === 0 && categoryIds.length === 0 && filters.length === 0) {
+  // If no models, categories, no filters, and no class selection, return empty string (no query)
+  if (modelIds.length === 0 && categoryIds.length === 0 && filters.length === 0 && !selectedClassName) {
     return "";
   }
 
@@ -94,6 +96,12 @@ export const elementQuery = (
 
   // Build WHERE clause
   const whereClauses: string[] = [];
+  
+  // Class filter (if specified)
+  if (selectedClassName) {
+    whereClauses.push(`ec_classname(e.ECClassId) = '${selectedClassName.replace(/'/g, "''")}'`);
+  }
+  
   // Primitive field filters (string properties)
   for (const f of fieldPropFilters) {
     whereClauses.push(`e.${f.id} LIKE '%${f.value.replace(/'/g, "''")}%`);
@@ -132,5 +140,78 @@ export const elementQuery = (
   if (whereClauses.length > 0) {
     query += ` WHERE ${whereClauses.join(" AND ")}`;
   }
+  return query;
+};
+
+/**
+ * Query to discover all element classes and their schemas in the iModel
+ * This gives you a high-level view of what types of elements exist
+ */
+export const schemaDiscoveryQuery = () => {
+  return `
+    SELECT
+      ec_classname(c.ECInstanceId) className,
+      COALESCE(s.DisplayLabel, s.Name) schemaLabel,
+      COALESCE(c.DisplayLabel, c.Name) classLabel,
+      COUNT(*) elementCount
+    FROM
+      bis.GeometricElement3d ge
+      JOIN ECDbMeta.ClassHasAllBaseClasses abc ON abc.SourceECInstanceId = ge.ECClassId
+      JOIN ECDbMeta.ECClassDef c ON c.ECInstanceId = abc.TargetECInstanceId
+      JOIN ECDbMeta.ECSchemaDef s ON s.ECInstanceId = c.Schema.Id
+    WHERE
+      s.Name != 'BisCore'
+    GROUP BY
+      c.ECInstanceId, s.ECInstanceId
+    ORDER BY
+      schemaLabel, classLabel
+  `;
+};
+
+/**
+ * Query elements by specific class name
+ * Use this after discovering classes with schemaDiscoveryQuery
+ */
+export const elementsByClassQuery = (className: string) => {
+  return `
+    SELECT 
+      e.ECInstanceId as id,
+      ec_classname(e.ECClassId) as className,
+      e.UserLabel,
+      e.CodeValue
+    FROM bis.GeometricElement3d e 
+    WHERE ec_classname(e.ECClassId) = '${className.replace(/'/g, "''")}'
+  `;
+};
+
+export interface QueryContext {
+  modelIds: string[];
+  categoryIds: string[];
+  filters: TableFilter[];
+  selectedSchema?: string;
+  selectedClassName?: string;
+}
+
+/**
+ * Enhanced element query that can filter by schema/class
+ */
+export const enhancedElementQuery = (context: QueryContext, availFields: Field[]) => {
+  const { modelIds, categoryIds, filters, selectedClassName } = context;
+  
+  // Start with base query
+  let query = elementQuery(modelIds, categoryIds, filters, availFields);
+  
+  // Add class filter if specified
+  if (selectedClassName) {
+    const hasWhere = query.includes("WHERE");
+    const classFilter = `ec_classname(e.ECClassId) = '${selectedClassName.replace(/'/g, "''")}'`;
+    
+    if (hasWhere) {
+      query = query.replace("WHERE", `WHERE ${classFilter} AND`);
+    } else {
+      query += ` WHERE ${classFilter}`;
+    }
+  }
+  
   return query;
 };

@@ -37,6 +37,7 @@ export class LeftPanelUIProvider implements UiItemsProvider {
       };
       widgets.push(secondWidget);
 
+
       return widgets;
     }
     return [];

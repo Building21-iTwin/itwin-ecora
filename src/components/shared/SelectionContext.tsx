@@ -24,6 +24,8 @@ export interface SelectionState {
   setTableFilters: (filters: TableFilter[]) => void;
   availableFields: Field[];
   setAvailableFields: (fields: Field[]) => void;
+  selectedClassName?: string;
+  setSelectedClassName: (className?: string) => void;
   clearAllFilters: () => void;
 }
 
@@ -46,6 +48,7 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
+  const [selectedClassName, setSelectedClassName] = useState<string | undefined>(undefined);
   
   // Load saved filters from localStorage on initialization
   const [tableFilters, setTableFiltersState] = useState<TableFilter[]>(() => {
@@ -73,16 +76,16 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   const clearAllFilters = () => setTableFilters([]);
 
   useEffect(() => {
-    void updateSelectedElements(selectedModelIds, selectedCategoryIds, tableFilters, availableFields);
-  }, [selectedModelIds, selectedCategoryIds, tableFilters, availableFields]);
+    void updateSelectedElements(selectedModelIds, selectedCategoryIds, tableFilters, availableFields, selectedClassName);
+  }, [selectedModelIds, selectedCategoryIds, tableFilters, availableFields, selectedClassName]);
 
   // Update selected elements based on model, category, and filters
-  const updateSelectedElements = async (modelIds: string[], categoryIds: string[], filters: TableFilter[], availFields: Field[]) => {
+  const updateSelectedElements = async (modelIds: string[], categoryIds: string[], filters: TableFilter[], availFields: Field[], className?: string) => {
     const iModel = IModelApp.viewManager.selectedView?.iModel;
     if (!iModel) return;
 
     // Build query with filters
-    const query = elementQuery(modelIds, categoryIds, filters, availFields);
+    const query = elementQuery(modelIds, categoryIds, filters, availFields, className);
     
     // If no query (no selection and no filters), do not override manual selection/emphasis
     if (!query) return;
@@ -143,6 +146,8 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
         setTableFilters,
         availableFields,
         setAvailableFields,
+        selectedClassName,
+        setSelectedClassName,
         clearAllFilters,
       }}
     >
