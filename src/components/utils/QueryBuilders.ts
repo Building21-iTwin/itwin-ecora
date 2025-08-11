@@ -99,12 +99,16 @@ export const elementQuery = (
   
   // Class filter (if specified)
   if (selectedClassName) {
-    whereClauses.push(`ec_classname(e.ECClassId) = '${selectedClassName.replace(/'/g, "''")}'`);
+    const classToken = selectedClassName.includes(":")
+      ? selectedClassName
+      : selectedClassName.replace(".", ":");
+    // Use ECClassId IS (Schema:Class) for proper class filtering
+    whereClauses.push(`e.ECClassId IS (${classToken})`);
   }
   
   // Primitive field filters (string properties)
   for (const f of fieldPropFilters) {
-    whereClauses.push(`e.${f.id} LIKE '%${f.value.replace(/'/g, "''")}%`);
+  whereClauses.push(`e.${f.id} LIKE '%${f.value.replace(/'/g, "''")}%'`);
   }
   // Category id filter
   if (categoryIds.length > 0) {
@@ -173,6 +177,7 @@ export const schemaDiscoveryQuery = () => {
  * Use this after discovering classes with schemaDiscoveryQuery
  */
 export const elementsByClassQuery = (className: string) => {
+  const classToken = className.includes(":") ? className : className.replace(".", ":");
   return `
     SELECT 
       e.ECInstanceId as id,
@@ -180,7 +185,7 @@ export const elementsByClassQuery = (className: string) => {
       e.UserLabel,
       e.CodeValue
     FROM bis.GeometricElement3d e 
-    WHERE ec_classname(e.ECClassId) = '${className.replace(/'/g, "''")}'
+    WHERE e.ECClassId IS (${classToken})
   `;
 };
 

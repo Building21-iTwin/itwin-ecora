@@ -158,7 +158,7 @@ export function SchemaBrowser({ iModel }: SchemaBrowserProps) {
           }}>
             <SvgStatusWarning style={{ width: 18, height: 18 }} />
             <Text variant="small" style={{ fontWeight: 500, color: "#1565c0" }}>
-              Filtering by class: {selectedClassName}
+              Filtering by class: {selectedClassName}, Please view in description grid
             </Text>
           </div>
         )}
