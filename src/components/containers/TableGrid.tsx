@@ -20,6 +20,7 @@ import type {
 } from "@itwin/presentation-components";
 import { useSelection } from "../shared/SelectionContext";
 import { ActiveFiltersDisplay, ColumnFilter } from "./TableFilter";
+import { SvgStatusWarning } from "@itwin/itwinui-icons-react";
 
 // Component to show warnings for selected categories and models
 function SelectionWarnings() {
@@ -47,9 +48,12 @@ function SelectionWarnings() {
     }}>
       <Flex alignItems="center" gap="sm" justifyContent="space-between">
         <Flex alignItems="center" gap="sm">
-          <Text variant="small" style={{ fontWeight: 500, color: "#856404" }}>
-            ⚠️ Active selections filtering results:
-          </Text>
+          <Flex alignItems="center" gap="xs">
+            <SvgStatusWarning style={{ width: 18, height: 18, verticalAlign: "middle" }} />
+            <Text variant="small" style={{ fontWeight: 500, color: "#856404" }}>
+              Active selections filtering results:
+            </Text>
+          </Flex>
           <Flex gap="xs" style={{ flexWrap: "wrap" }}>
             {selectedCategoryIds.length > 0 && (
               <Text variant="small" style={{ 

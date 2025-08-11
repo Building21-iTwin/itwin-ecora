@@ -25,6 +25,7 @@
     "@itwin/ecschema-rpcinterface-common": "^5.0.2",
     "@itwin/imodel-components-react": "^5.11.2",
     "@itwin/imodels-access-frontend": "^6.0.1",
+    "@itwin/itwinui-icons-color": "^2.1.0",
     "@itwin/itwinui-illustrations-react": "^2.1.0",
     "@itwin/itwinui-react": "^3.18.3",
     "@itwin/measure-tools-react": "^0.28.0",

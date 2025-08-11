@@ -13,7 +13,7 @@ import {
   Tooltip,
   Table as UiTable
 } from "@itwin/itwinui-react";
-import { SvgClose, SvgRefresh } from "@itwin/itwinui-icons-react";
+import { SvgClose, SvgRefresh, SvgStatusWarning } from "@itwin/itwinui-icons-react";
 import { IModelConnection } from "@itwin/core-frontend";
 import { QueryRowFormat } from "@itwin/core-common";
 import { schemaDiscoveryQuery } from "../utils/QueryBuilders";
@@ -151,10 +151,14 @@ export function SchemaBrowser({ iModel }: SchemaBrowserProps) {
             padding: "0.5rem", 
             backgroundColor: "#e3f2fd", 
             borderRadius: "4px",
-            border: "1px solid #bbdefb"
+            border: "1px solid #bbdefb",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem"
           }}>
+            <SvgStatusWarning style={{ width: 18, height: 18 }} />
             <Text variant="small" style={{ fontWeight: 500, color: "#1565c0" }}>
-              🎯 Filtering by class: {selectedClassName}
+              Filtering by class: {selectedClassName}
             </Text>
           </div>
         )}
