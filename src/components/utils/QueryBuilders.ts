@@ -1,4 +1,4 @@
-import { getFieldTypeInfo } from "../containers/TableFilter";
+import { getFieldTypeInfo } from "../utils/FieldTypeInfo";
 import { Field } from "@itwin/presentation-common";
 import type { TableFilter } from "../shared/SelectionContext";
 
