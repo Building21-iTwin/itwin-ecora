@@ -18,6 +18,7 @@ import { IModelConnection } from "@itwin/core-frontend";
 import { QueryRowFormat } from "@itwin/core-common";
 import { schemaDiscoveryQuery } from "../utils/QueryBuilders";
 import { useSelection } from "../shared/SelectionContext";
+import { ActiveFiltersDisplay } from "./TableFilter";
 
 export interface SchemaBrowserProps {
   iModel: IModelConnection;
@@ -31,7 +32,7 @@ interface SchemaClass {
 }
 
 export function SchemaBrowser({ iModel }: SchemaBrowserProps) {
-  const { selectedClassName, setSelectedClassName } = useSelection();
+  const { selectedClassName, setSelectedClassName, selectedCategoryIds, selectedModelIds, setSelectedCategoryIds, setSelectedModelIds } = useSelection();
   const [schemaClasses, setSchemaClasses] = useState<SchemaClass[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -120,7 +121,7 @@ export function SchemaBrowser({ iModel }: SchemaBrowserProps) {
       {/* Header */}
       <div style={{ padding: "1rem", borderBottom: "1px solid #e1e5e9" }}>
         <Flex alignItems="center" justifyContent="space-between">
-          <Text variant="title">Class Browser</Text>
+          <Text variant="title">Class and Schema Browser</Text>
           <Flex gap="sm" alignItems="center">
             <Tooltip content="Refresh schema classes">
               <IconButton
@@ -158,7 +159,7 @@ export function SchemaBrowser({ iModel }: SchemaBrowserProps) {
           }}>
             <SvgStatusWarning style={{ width: 18, height: 18 }} />
             <Text variant="small" style={{ fontWeight: 500, color: "#1565c0" }}>
-              Filtering by class: {selectedClassName}, Please view in description grid
+              Filtering by class: {selectedClassName}, Please view in Description Grid
             </Text>
           </div>
         )}
@@ -166,6 +167,76 @@ export function SchemaBrowser({ iModel }: SchemaBrowserProps) {
 
       {/* Content */}
       <div style={{ flex: 1, padding: "1rem" }}>
+        {/* Active Filters Display - same as Description Grid */}
+        <div style={{ marginBottom: "0.5rem" }}>
+          <ActiveFiltersDisplay />
+        </div>
+
+        {/* Active Selections (models/categories/class) like Description Grid */}
+        {(selectedCategoryIds.length > 0 || selectedModelIds.length > 0 || selectedClassName) && (
+          <div style={{ 
+            padding: "0.5rem", 
+            backgroundColor: "#fff3cd", 
+            border: "1px solid #ffeaa7", 
+            borderRadius: "4px",
+            marginBottom: "0.75rem"
+          }}>
+            <Flex alignItems="center" gap="sm" justifyContent="space-between">
+              <Flex alignItems="center" gap="sm">
+                <Flex alignItems="center" gap="xs">
+                  <SvgStatusWarning style={{ width: 18, height: 18, verticalAlign: "middle" }} />
+                  <Text variant="small" style={{ fontWeight: 500, color: "#856404" }}>
+                    Active selections filtering results:
+                  </Text>
+                </Flex>
+                <Flex gap="xs" style={{ flexWrap: "wrap" }}>
+                  {selectedCategoryIds.length > 0 && (
+                    <Text variant="small" style={{ 
+                      backgroundColor: "#fd7e14", 
+                      color: "white", 
+                      padding: "2px 6px", 
+                      borderRadius: "4px",
+                      fontSize: "11px"
+                    }}>
+                      {selectedCategoryIds.length} categor{selectedCategoryIds.length === 1 ? 'y' : 'ies'}
+                    </Text>
+                  )}
+                  {selectedModelIds.length > 0 && (
+                    <Text variant="small" style={{ 
+                      backgroundColor: "#20c997", 
+                      color: "white", 
+                      padding: "2px 6px", 
+                      borderRadius: "4px",
+                      fontSize: "11px"
+                    }}>
+                      {selectedModelIds.length} model{selectedModelIds.length === 1 ? '' : 's'}
+                    </Text>
+                  )}
+                  {selectedClassName && (
+                    <Text variant="small" style={{ 
+                      backgroundColor: "#6f42c1", 
+                      color: "white", 
+                      padding: "2px 6px", 
+                      borderRadius: "4px",
+                      fontSize: "11px"
+                    }}>
+                      Class: {selectedClassName.split(/[.:]/).pop() || selectedClassName}
+                    </Text>
+                  )}
+                </Flex>
+              </Flex>
+              <Button 
+                size="small" 
+                styleType="borderless" 
+                onClick={() => { setSelectedCategoryIds([]); setSelectedModelIds([]); setSelectedClassName(undefined); }}
+                style={{ color: "#856404" }}
+              >
+                Clear selections
+              </Button>
+            </Flex>
+          </div>
+        )}
+
         {loading && (
           <div style={{ 
             display: "flex", 

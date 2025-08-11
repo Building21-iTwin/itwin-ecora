@@ -184,26 +184,37 @@ export function Table({ iModel, width: _width, height: _height, loadingContentSt
     return (
       loadingContentState?.() ?? (
         <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
-          {/* Selection Warnings - Always shown */}
-          <SelectionWarnings />
-          
-          {/* Active Filters Display - Always shown */}
-          <div style={{ padding: "0.5rem" }}>
-            <ActiveFiltersDisplay />
-          </div>
-          
-          {/* Element Count Display */}
-          <div style={{ padding: "0.5rem", fontWeight: 500, fontSize: "0.95rem", color: "#333" }}>
-            <Flex alignItems="center" gap="sm">
-              <Text>Loading...</Text>
+          {/* Header to match Schema Browser */}
+          <div style={{ padding: "1rem", borderBottom: "1px solid #e1e5e9" }}>
+            <Flex alignItems="center" justifyContent="space-between">
+              <Text variant="title">Description Grid</Text>
+              <div />
             </Flex>
           </div>
-          
-          {/* Loading Message Row */}
-          <div style={{ padding: "2rem", display: "flex", justifyContent: "center", alignItems: "center", flex: 1 }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
-              <ProgressRadial size="large" indeterminate={true} />
-              <Text>Loading table content...</Text>
+
+          {/* Content area */}
+          <div style={{ flex: 1, padding: "1rem", display: "flex", flexDirection: "column" }}>
+            {/* Active Filters Display - Always shown */}
+            <div style={{ marginBottom: "0.5rem" }}>
+              <ActiveFiltersDisplay />
+            </div>
+
+            {/* Selection Warnings - Always shown */}
+            <SelectionWarnings />
+
+            {/* Element Count Display */}
+            <div style={{ padding: "0.5rem 0", fontWeight: 500, fontSize: "0.95rem", color: "#333" }}>
+              <Flex alignItems="center" gap="sm">
+                <Text>Loading...</Text>
+              </Flex>
+            </div>
+
+            {/* Loading Message Row */}
+            <div style={{ padding: "2rem", display: "flex", justifyContent: "center", alignItems: "center", flex: 1 }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
+                <ProgressRadial size="large" indeterminate={true} />
+                <Text>Loading table content...</Text>
+              </div>
             </div>
           </div>
         </div>
@@ -215,28 +226,39 @@ export function Table({ iModel, width: _width, height: _height, loadingContentSt
     return (
       noContentState?.() ?? (
         <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
-          {/* Selection Warnings - Always shown */}
-          <SelectionWarnings />
-          
-          {/* Active Filters Display - Always shown */}
-          <div style={{ padding: "0.5rem" }}>
-            <ActiveFiltersDisplay />
-          </div>
-          
-          {/* Element Count Display */}
-          <div style={{ padding: "0.5rem", fontWeight: 500, fontSize: "0.95rem", color: "#333" }}>
-            <Flex alignItems="center" gap="sm">
-              <Text>Showing 0 elements</Text>
+          {/* Header to match Schema Browser */}
+          <div style={{ padding: "1rem", borderBottom: "1px solid #e1e5e9" }}>
+            <Flex alignItems="center" justifyContent="space-between">
+              <Text variant="title">Description Grid</Text>
+              <div />
             </Flex>
           </div>
-          
-          {/* No Content Message Row */}
-          <div style={{ padding: "2rem", display: "flex", justifyContent: "center", alignItems: "center", flex: 1 }}>
-            <Text>
-              {tableFilters.length > 0 || selectedCategoryIds.length > 0 || selectedModelIds.length > 0 || selectedClassName
-                ? "No elements match the current filters or selections. Clear filters/selections above to see data." 
-                : "There is no content for current selection."}
-            </Text>
+
+          {/* Content area */}
+          <div style={{ flex: 1, padding: "1rem", display: "flex", flexDirection: "column" }}>
+            {/* Active Filters Display - Always shown */}
+            <div style={{ marginBottom: "0.5rem" }}>
+              <ActiveFiltersDisplay />
+            </div>
+
+            {/* Selection Warnings - Always shown */}
+            <SelectionWarnings />
+
+            {/* Element Count Display */}
+            <div style={{ padding: "0.5rem 0", fontWeight: 500, fontSize: "0.95rem", color: "#333" }}>
+              <Flex alignItems="center" gap="sm">
+                <Text>Showing 0 elements</Text>
+              </Flex>
+            </div>
+
+            {/* No Content Message Row */}
+            <div style={{ padding: "2rem", display: "flex", justifyContent: "center", alignItems: "center", flex: 1 }}>
+              <Text>
+                {tableFilters.length > 0 || selectedCategoryIds.length > 0 || selectedModelIds.length > 0 || selectedClassName
+                  ? "No elements match the current filters or selections. Clear filters/selections above to see data." 
+                  : "There is no content for current selection."}
+              </Text>
+            </div>
           </div>
         </div>
       )
@@ -245,48 +267,59 @@ export function Table({ iModel, width: _width, height: _height, loadingContentSt
 
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
-      {/* Selection Warnings */}
-      <SelectionWarnings />
-      
-      {/* Active Filters Display - Always shown */}
-      <div style={{ padding: "0.5rem" }}>
-        <ActiveFiltersDisplay />
-      </div>
-      
-      {/* Element Count Display */}
-      <div style={{ padding: "0.5rem", fontWeight: 500, fontSize: "0.95rem", color: "#333" }}>
-        <Flex alignItems="center" gap="sm">
-          <Text>
-            Showing  {totalCount} element{totalCount === 1 ? "" : "s"}
-          </Text>
+      {/* Header to match Schema Browser */}
+      <div style={{ padding: "1rem", borderBottom: "1px solid #e1e5e9" }}>
+        <Flex alignItems="center" justifyContent="space-between">
+          <Text variant="title">Description Grid</Text>
+          <div />
         </Flex>
       </div>
-      
-      {/* Table */}
-      <div style={{ flex: 1, minHeight: 0 }}>
-        {isInitialLoading || isLoading ? (
-          <div style={{ padding: "2rem", display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
-              <ProgressRadial size="large" indeterminate={true} />
-              <Text>Loading table data...</Text>
+
+      {/* Content area */}
+      <div style={{ flex: 1, padding: "1rem", display: "flex", flexDirection: "column" }}>
+        {/* Active Filters Display - Always shown */}
+        <div style={{ marginBottom: "0.5rem" }}>
+          <ActiveFiltersDisplay />
+        </div>
+
+        {/* Selection Warnings */}
+        <SelectionWarnings />
+
+        {/* Element Count Display */}
+        <div style={{ padding: "0.5rem 0", fontWeight: 500, fontSize: "0.95rem", color: "#333" }}>
+          <Flex alignItems="center" gap="sm">
+            <Text>
+              Showing  {totalCount} element{totalCount === 1 ? "" : "s"}
+            </Text>
+          </Flex>
+        </div>
+
+        {/* Table */}
+        <div style={{ flex: 1, minHeight: 0 }}>
+          {isInitialLoading || isLoading ? (
+            <div style={{ padding: "2rem", display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
+                <ProgressRadial size="large" indeterminate={true} />
+                <Text>Loading table data...</Text>
+              </div>
             </div>
-          </div>
-        ) : (
-          <UiTable
-            columns={columns}
-            data={rows}
-            enableVirtualization={true}
-            emptyTableContent={
-              tableFilters.length > 0 ? 
-                <>No elements match the current filters.</> : 
-                noRowsState?.() ?? <>No rows.</>
-            }
-            onBottomReached={loadMoreRows}
-            density="extra-condensed"
-            styleType="zebra-rows"
-            style={{ width: "100%", height: "100%" }}
-          />
-        )}
+          ) : (
+            <UiTable
+              columns={columns}
+              data={rows}
+              enableVirtualization={true}
+              emptyTableContent={
+                tableFilters.length > 0 ? 
+                  <>No elements match the current filters.</> : 
+                  noRowsState?.() ?? <>No rows.</>
+              }
+              onBottomReached={loadMoreRows}
+              density="extra-condensed"
+              styleType="zebra-rows"
+              style={{ width: "100%", height: "100%" }}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

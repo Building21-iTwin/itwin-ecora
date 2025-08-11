@@ -2,13 +2,43 @@ import { getFieldTypeInfo } from "../containers/TableFilter";
 import { Field } from "@itwin/presentation-common";
 import type { TableFilter } from "../shared/SelectionContext";
 
+// Resolve ECProperty name from a Field (for direct properties)
+function getEcPropertyName(field?: Field): string | undefined {
+  const props = (field as any)?.properties;
+  if (Array.isArray(props) && props.length > 0) {
+    const ecProp = props[0]?.property;
+    if (ecProp?.name && typeof ecProp.name === "string") return ecProp.name;
+  }
+  const name = (field as any)?.name;
+  return typeof name === "string" ? name : undefined;
+}
+
+// Safely quote an EC property name for ECSQL
+function qProp(name: string): string {
+  // Wrap in square brackets to avoid issues with casing/reserved words
+  return `[${name}]`;
+}
+
+// Determine nav kind from filter/field metadata
+function getNavKind(filter: TableFilter): "model" | "category" | "typedefinition" | "parent" | undefined {
+  const id = (filter.id || "").toString().toLowerCase();
+  const info = filter.field ? getFieldTypeInfo(filter.field) : undefined;
+  const target = (info?.target || "").toString().toLowerCase();
+  if (id.includes("model") || target.includes("model")) return "model";
+  if (id.includes("category") || target.includes("category")) return "category";
+  if (id.includes("typedefinition") || target.includes("physicaltype") || target.includes("typedefinition")) return "typedefinition";
+  if (id.includes("parent") || target.includes("element")) return "parent";
+  return undefined;
+}
+
 // Build WHERE clause from tableFilters (simple LIKE filter)
 export function buildFilterWhereClause(tableFilters: TableFilter[]): string {
   if (!tableFilters.length) return "";
   return tableFilters
     .map(filter => {
       const escapedValue = filter.value.replace(/'/g, "''");
-      return `${filter.id} LIKE '%${escapedValue}%'`;
+  // Fall back to filter.id, but ensure we quote the property name
+  return `${qProp(filter.id)} LIKE '%${escapedValue}%'`;
     })
     .join(" AND ");
 }
@@ -59,36 +89,35 @@ export const elementQuery = (
   const selectFields = [
     "e.ECInstanceId as id",
     "ec_classname(e.ECClassId) as className",
-    ...fieldPropFilters.map(f => `e.${f.id}`)
+    // Include any requested primitive fields using resolved EC property names
+    ...fieldPropFilters
+      .map(f => getEcPropertyName(f.field) ?? f.id)
+      .filter((n): n is string => !!n)
+      .map(n => `e.${qProp(n)}`)
   ];
   // If model nav filter present, add me.UserLabel to SELECT
-  if (navPropFilters.some(f => {
-    const fieldName = f.id.toLowerCase();
-    return fieldName.includes("model") || fieldName === "model";
-  })) {
+  if (navPropFilters.some(f => getNavKind(f) === "model")) {
     selectFields.push("me.UserLabel");
   }
 
   // Only add joins if navPropFilters exist
-  let joins: { table: string; alias: string; joinOn: string }[] = [];
+  const joins: { table: string; alias: string; joinOn: string }[] = [];
   if (navPropFilters.length > 0) {
-    // Always join Model and Category if nav props are present
-    joins = [
-      { table: "bis.Model", alias: "m", joinOn: "e.Model.Id = m.ECInstanceId" },
-      { table: "bis.Category", alias: "c", joinOn: "e.Category.Id = c.ECInstanceId" }
-    ];
+    const hasModel = navPropFilters.some(f => getNavKind(f) === "model");
+    const hasCategory = navPropFilters.some(f => getNavKind(f) === "category");
+    if (hasModel) {
+      joins.push({ table: "bis.Model", alias: "m", joinOn: "e.Model.Id = m.ECInstanceId" });
+      joins.push({ table: "bis.Element", alias: "me", joinOn: "m.ModeledElement.Id = me.ECInstanceId" });
+    }
+    if (hasCategory) {
+      joins.push({ table: "bis.Category", alias: "c", joinOn: "e.Category.Id = c.ECInstanceId" });
+    }
     for (const f of navPropFilters) {
-      const fieldName = f.id.toLowerCase();
-      if ((fieldName.includes("model") || fieldName === "model") && !joins.some(j => j.alias === "me")) {
-        joins.push({ table: "bis.Element", alias: "me", joinOn: "m.ModeledElement.Id = me.ECInstanceId" });
-      }
-      if ((fieldName.includes("category") || fieldName === "category")) {
-        // No-op, just for logic completeness
-      }
-      if (fieldName.includes("typedefinition") && !joins.some(j => j.alias === "t")) {
+      const kind = getNavKind(f);
+      if (kind === "typedefinition" && !joins.some(j => j.alias === "t")) {
         joins.push({ table: "bis.PhysicalType", alias: "t", joinOn: "e.TypeDefinition.Id = t.ECInstanceId" });
       }
-      if (fieldName.includes("parent") && !joins.some(j => j.alias === "p")) {
+      if (kind === "parent" && !joins.some(j => j.alias === "p")) {
         joins.push({ table: "bis.Element", alias: "p", joinOn: "e.Parent.Id = p.ECInstanceId" });
       }
     }
@@ -108,7 +137,9 @@ export const elementQuery = (
   
   // Primitive field filters (string properties)
   for (const f of fieldPropFilters) {
-  whereClauses.push(`e.${f.id} LIKE '%${f.value.replace(/'/g, "''")}%'`);
+  const propName = getEcPropertyName(f.field) ?? f.id;
+    const val = f.value.replace(/'/g, "''");
+  whereClauses.push(`e.${qProp(propName)} LIKE '%${val}%'`);
   }
   // Category id filter
   if (categoryIds.length > 0) {
@@ -121,17 +152,16 @@ export const elementQuery = (
   // Navigation property filters (if any)
   if (navPropFilters.length > 0) {
     for (const f of navPropFilters) {
-      const fieldName = f.id.toLowerCase();
-      if (fieldName.includes("category") || fieldName === "category") {
-        const val = f.value.replace(/'/g, "''");
+      const kind = getNavKind(f);
+      const val = f.value.replace(/'/g, "''");
+      if (kind === "category") {
         whereClauses.push(`(c.UserLabel LIKE '%${val}%' OR c.CodeValue LIKE '%${val}%')`);
-      } else if (fieldName.includes("model") || fieldName === "model") {
-        const val = f.value.replace(/'/g, "''");
+      } else if (kind === "model") {
         whereClauses.push(`(me.UserLabel LIKE '%${val}%' OR me.CodeValue LIKE '%${val}%')`);
-      } else if (fieldName.includes("typedefinition") || fieldName === "typedefinition") {
-        whereClauses.push(`t.UserLabel LIKE '%${f.value.replace(/'/g, "''")}%`);
-      } else if (fieldName.includes("parent") || fieldName === "parent") {
-        whereClauses.push(`p.UserLabel LIKE '%${f.value.replace(/'/g, "''")}%`);
+      } else if (kind === "typedefinition") {
+        whereClauses.push(`t.UserLabel LIKE '%${val}%'`);
+      } else if (kind === "parent") {
+        whereClauses.push(`p.UserLabel LIKE '%${val}%'`);
       }
     }
   }
