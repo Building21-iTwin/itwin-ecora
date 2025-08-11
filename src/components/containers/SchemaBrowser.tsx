@@ -26,13 +26,14 @@ export interface SchemaBrowserProps {
 
 interface SchemaClass {
   className: string;
+  schemaName: string;
   schemaLabel: string;
   classLabel: string;
   elementCount: number;
 }
 
 export function SchemaBrowser({ iModel }: SchemaBrowserProps) {
-  const { selectedClassName, setSelectedClassName, selectedCategoryIds, selectedModelIds, setSelectedCategoryIds, setSelectedModelIds } = useSelection();
+  const { selectedClassNames, setSelectedClassNames, selectedSchemaNames, setSelectedSchemaNames, selectedCategoryIds, selectedModelIds, setSelectedCategoryIds, setSelectedModelIds } = useSelection();
   const [schemaClasses, setSchemaClasses] = useState<SchemaClass[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,9 +46,10 @@ export function SchemaBrowser({ iModel }: SchemaBrowserProps) {
       
       const results: SchemaClass[] = [];
       const queryReader = iModel.createQueryReader(query, undefined, { rowFormat: QueryRowFormat.UseECSqlPropertyNames });
-      for await (const row of queryReader) {
+    for await (const row of queryReader) {
         results.push({
           className: row.className as string,
+      schemaName: row.schemaName as string,
           schemaLabel: row.schemaLabel as string,
           classLabel: row.classLabel as string,
           elementCount: row.elementCount as number
@@ -63,17 +65,15 @@ export function SchemaBrowser({ iModel }: SchemaBrowserProps) {
   }, [iModel]);
 
   const handleClassSelect = useCallback((className: string) => {
-    if (selectedClassName === className) {
-      // Deselect if already selected
-      setSelectedClassName(undefined);
-    } else {
-      setSelectedClassName(className);
-    }
-  }, [selectedClassName, setSelectedClassName]);
+    const exists = selectedClassNames.includes(className);
+    const next = exists ? selectedClassNames.filter((c) => c !== className) : [...selectedClassNames, className];
+    setSelectedClassNames(next);
+  }, [selectedClassNames, setSelectedClassNames]);
 
   const clearSelection = useCallback(() => {
-    setSelectedClassName(undefined);
-  }, [setSelectedClassName]);
+    setSelectedClassNames([]);
+    setSelectedSchemaNames([]);
+  }, [setSelectedClassNames, setSelectedSchemaNames]);
 
   useEffect(() => {
     // Auto-load on mount
@@ -104,13 +104,13 @@ export function SchemaBrowser({ iModel }: SchemaBrowserProps) {
     {
       Header: "Actions",
       width: 100,
-      Cell: ({ row }: { row: { original: SchemaClass } }) => (
+    Cell: ({ row }: { row: { original: SchemaClass } }) => (
         <Button 
           size="small"
-          styleType={selectedClassName === row.original.className ? "high-visibility" : "default"}
+      styleType={selectedClassNames.includes(row.original.className) ? "high-visibility" : "default"}
           onClick={() => handleClassSelect(row.original.className)}
         >
-          {selectedClassName === row.original.className ? "Selected" : "Select"}
+      {selectedClassNames.includes(row.original.className) ? "Selected" : "Select"}
         </Button>
       ),
     },
@@ -132,7 +132,7 @@ export function SchemaBrowser({ iModel }: SchemaBrowserProps) {
                 <SvgRefresh />
               </IconButton>
             </Tooltip>
-            {selectedClassName && (
+      {(selectedClassNames.length > 0 || selectedSchemaNames.length > 0) && (
               <Tooltip content="Clear class selection">
                 <IconButton
                   size="small"
@@ -146,7 +146,7 @@ export function SchemaBrowser({ iModel }: SchemaBrowserProps) {
           </Flex>
         </Flex>
         
-        {selectedClassName && (
+    {(selectedClassNames.length > 0 || selectedSchemaNames.length > 0) && (
           <div style={{ 
             marginTop: "0.5rem", 
             padding: "0.5rem", 
@@ -159,7 +159,9 @@ export function SchemaBrowser({ iModel }: SchemaBrowserProps) {
           }}>
             <SvgStatusWarning style={{ width: 18, height: 18 }} />
             <Text variant="small" style={{ fontWeight: 500, color: "#1565c0" }}>
-              Filtering by class: {selectedClassName}, Please view in Description Grid
+        {selectedClassNames.length > 0 && `Filtering by ${selectedClassNames.length} class${selectedClassNames.length === 1 ? '' : 'es'}`}
+        {selectedSchemaNames.length > 0 && `${selectedClassNames.length > 0 ? ' and ' : ''}${selectedSchemaNames.length} schema${selectedSchemaNames.length === 1 ? '' : 's'}`}.
+        Please view in Description Grid
             </Text>
           </div>
         )}
@@ -173,7 +175,7 @@ export function SchemaBrowser({ iModel }: SchemaBrowserProps) {
         </div>
 
         {/* Active Selections (models/categories/class) like Description Grid */}
-        {(selectedCategoryIds.length > 0 || selectedModelIds.length > 0 || selectedClassName) && (
+  {(selectedCategoryIds.length > 0 || selectedModelIds.length > 0 || selectedClassNames.length > 0 || selectedSchemaNames.length > 0) && (
           <div style={{ 
             padding: "0.5rem", 
             backgroundColor: "#fff3cd", 
@@ -212,7 +214,7 @@ export function SchemaBrowser({ iModel }: SchemaBrowserProps) {
                       {selectedModelIds.length} model{selectedModelIds.length === 1 ? '' : 's'}
                     </Text>
                   )}
-                  {selectedClassName && (
+                  {selectedClassNames.length > 0 && (
                     <Text variant="small" style={{ 
                       backgroundColor: "#6f42c1", 
                       color: "white", 
@@ -220,7 +222,18 @@ export function SchemaBrowser({ iModel }: SchemaBrowserProps) {
                       borderRadius: "4px",
                       fontSize: "11px"
                     }}>
-                      Class: {selectedClassName.split(/[.:]/).pop() || selectedClassName}
+                      {selectedClassNames.length} class{selectedClassNames.length === 1 ? '' : 'es'}
+                    </Text>
+                  )}
+                  {selectedSchemaNames.length > 0 && (
+                    <Text variant="small" style={{ 
+                      backgroundColor: "#0d6efd", 
+                      color: "white", 
+                      padding: "2px 6px", 
+                      borderRadius: "4px",
+                      fontSize: "11px"
+                    }}>
+                      {selectedSchemaNames.length} schema{selectedSchemaNames.length === 1 ? '' : 's'}
                     </Text>
                   )}
                 </Flex>
@@ -228,7 +241,7 @@ export function SchemaBrowser({ iModel }: SchemaBrowserProps) {
               <Button 
                 size="small" 
                 styleType="borderless" 
-                onClick={() => { setSelectedCategoryIds([]); setSelectedModelIds([]); setSelectedClassName(undefined); }}
+                onClick={() => { setSelectedCategoryIds([]); setSelectedModelIds([]); setSelectedClassNames([]); setSelectedSchemaNames([]); }}
                 style={{ color: "#856404" }}
               >
                 Clear selections

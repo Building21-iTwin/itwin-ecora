@@ -24,8 +24,10 @@ export interface SelectionState {
   setTableFilters: (filters: TableFilter[]) => void;
   availableFields: Field[];
   setAvailableFields: (fields: Field[]) => void;
-  selectedClassName?: string;
-  setSelectedClassName: (className?: string) => void;
+  selectedClassNames: string[];
+  setSelectedClassNames: (classNames: string[]) => void;
+  selectedSchemaNames: string[];
+  setSelectedSchemaNames: (schemaNames: string[]) => void;
   clearAllFilters: () => void;
 }
 
@@ -48,7 +50,8 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
-  const [selectedClassName, setSelectedClassName] = useState<string | undefined>(undefined);
+  const [selectedClassNames, setSelectedClassNames] = useState<string[]>([]);
+  const [selectedSchemaNames, setSelectedSchemaNames] = useState<string[]>([]);
   
   // Load saved filters from localStorage on initialization
   const [tableFilters, setTableFiltersState] = useState<TableFilter[]>(() => {
@@ -76,18 +79,31 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   const clearAllFilters = () => setTableFilters([]);
 
   useEffect(() => {
-    
-    void updateSelectedElements(selectedModelIds, selectedCategoryIds, tableFilters, availableFields, selectedClassName);
-  }, [selectedModelIds, selectedCategoryIds, tableFilters, availableFields, selectedClassName]);
+    void updateSelectedElements(
+      selectedModelIds,
+      selectedCategoryIds,
+      tableFilters,
+      availableFields,
+      selectedClassNames,
+      selectedSchemaNames
+    );
+  }, [selectedModelIds, selectedCategoryIds, tableFilters, availableFields, selectedClassNames, selectedSchemaNames]);
 
   // Update selected elements based on model, category, and filters
-  const updateSelectedElements = async (modelIds: string[], categoryIds: string[], filters: TableFilter[], availFields: Field[], className?: string) => {
+  const updateSelectedElements = async (
+    modelIds: string[],
+    categoryIds: string[],
+    filters: TableFilter[],
+    availFields: Field[],
+    classNames: string[],
+    schemaNames: string[]
+  ) => {
     
     const iModel = IModelApp.viewManager.selectedView?.iModel;
     if (!iModel) return;
 
     // Build query with filters
-    const query = elementQuery(modelIds, categoryIds, filters, availFields, className);
+    const query = elementQuery(modelIds, categoryIds, filters, availFields, classNames, schemaNames);
     
     // If no query (no selection and no filters), do not override manual selection/emphasis
     if (!query) {
@@ -129,7 +145,7 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
     } else {
       setSelectedModelIds(ids);
     }
-    if (ids.length === 0 && (type === "category" ? selectedModelIds.length : selectedCategoryIds.length) === 0) {
+  if (ids.length === 0 && (type === "category" ? selectedModelIds.length : selectedCategoryIds.length) === 0) {
       clearSelectionAndEmphasis();
     }
   };
@@ -150,8 +166,10 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
         setTableFilters,
         availableFields,
         setAvailableFields,
-        selectedClassName,
-        setSelectedClassName,
+  selectedClassNames,
+  setSelectedClassNames,
+  selectedSchemaNames,
+  setSelectedSchemaNames,
         clearAllFilters,
       }}
     >

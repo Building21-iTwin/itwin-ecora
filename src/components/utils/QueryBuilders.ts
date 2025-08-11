@@ -50,7 +50,7 @@ export function buildFilterWhereClause(tableFilters: TableFilter[]): string {
  * @param categoryIds - Array of selected category ECInstanceIds
  * @param filters - Array of TableFilter objects (column filters)
  * @param _availFields - Array of available Field objects (not used here)
- * @param selectedClassName - Optional class name to filter by
+ * @param selectedClassNames - Optional class names to filter by
  * @returns ECSQL query string or empty string if no selection
  *
  * Example output:
@@ -61,10 +61,17 @@ export const elementQuery = (
   categoryIds: string[],
   filters: TableFilter[],
   _availFields: Field[],
-  selectedClassName?: string
+  selectedClassNames?: string[],
+  selectedSchemaNames?: string[]
 ) => {
   // If no models, categories, filters, or class selection, return empty string (no query)
-  if (modelIds.length === 0 && categoryIds.length === 0 && filters.length === 0 && !selectedClassName) {
+  if (
+    modelIds.length === 0 &&
+    categoryIds.length === 0 &&
+    filters.length === 0 &&
+    (!selectedClassNames || selectedClassNames.length === 0) &&
+    (!selectedSchemaNames || selectedSchemaNames.length === 0)
+  ) {
     return "";
   }
 
@@ -126,14 +133,18 @@ export const elementQuery = (
   // Build WHERE clause
   const whereClauses: string[] = [];
   
-  // Class filter (if specified)
-  if (selectedClassName) {
-    const classToken = selectedClassName.includes(":")
-      ? selectedClassName
-      : selectedClassName.replace(".", ":");
-    // Use ECClassId IS (Schema:Class) for proper class filtering
-    whereClauses.push(`e.ECClassId IS (${classToken})`);
+  // Class filters (if specified)
+  if (selectedClassNames && selectedClassNames.length > 0) {
+    const classExprs = selectedClassNames.map((cn) => {
+      const token = cn.includes(":") ? cn : cn.replace(".", ":");
+      return `e.ECClassId IS (${token})`;
+    });
+    whereClauses.push(`(${classExprs.join(" OR ")})`);
   }
+
+  // Schema filters (if specified) - join to ECDbMeta to filter by schema name
+  const needsSchemaJoin = !!(selectedSchemaNames && selectedSchemaNames.length > 0);
+  const schemaNamesEscaped = (selectedSchemaNames || []).map((s) => s.replace(/'/g, "''"));
   
   // Primitive field filters (string properties)
   for (const f of fieldPropFilters) {
@@ -168,8 +179,15 @@ export const elementQuery = (
 
   // Build query string
   let query = `SELECT ${selectFields.join(", ")} FROM ${baseTable} ${baseAlias}`;
+  if (needsSchemaJoin) {
+    // Join to ECDbMeta to allow filtering by schema name
+    query += ` JOIN ECDbMeta.ECClassDef _c ON _c.ECInstanceId = e.ECClassId JOIN ECDbMeta.ECSchemaDef _s ON _s.ECInstanceId = _c.Schema.Id`;
+  }
   for (const join of joins) {
     query += ` JOIN ${join.table} ${join.alias} ON ${join.joinOn}`;
+  }
+  if (needsSchemaJoin && schemaNamesEscaped.length > 0) {
+    whereClauses.push(`_s.Name IN ('${schemaNamesEscaped.join("','")}')`);
   }
   if (whereClauses.length > 0) {
     query += ` WHERE ${whereClauses.join(" AND ")}`;
@@ -185,6 +203,7 @@ export const schemaDiscoveryQuery = () => {
   return `
     SELECT
       ec_classname(c.ECInstanceId) className,
+  s.Name schemaName,
       COALESCE(s.DisplayLabel, s.Name) schemaLabel,
       COALESCE(c.DisplayLabel, c.Name) classLabel,
       COUNT(*) elementCount
@@ -223,16 +242,16 @@ export interface QueryContext {
   modelIds: string[];
   categoryIds: string[];
   filters: TableFilter[];
-  selectedSchema?: string;
-  selectedClassName?: string;
+  selectedSchemaNames?: string[];
+  selectedClassNames?: string[];
 }
 
 /**
  * Enhanced element query that can filter by schema/class
  */
 export const enhancedElementQuery = (context: QueryContext, availFields: Field[]) => {
-  const { modelIds, categoryIds, filters, selectedClassName } = context;
+  const { modelIds, categoryIds, filters, selectedClassNames, selectedSchemaNames } = context;
   
   // The elementQuery function already handles selectedClassName, so just call it directly
-  return elementQuery(modelIds, categoryIds, filters, availFields, selectedClassName);
+  return elementQuery(modelIds, categoryIds, filters, availFields, selectedClassNames, selectedSchemaNames);
 };

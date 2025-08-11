@@ -24,18 +24,19 @@ import { SvgStatusWarning } from "@itwin/itwinui-icons-react";
 
 // Component to show warnings for selected categories and models
 function SelectionWarnings() {
-  const { selectedCategoryIds, selectedModelIds, selectedClassName, setSelectedCategoryIds, setSelectedModelIds, setSelectedClassName } = useSelection();
+  const { selectedCategoryIds, selectedModelIds, selectedClassNames, selectedSchemaNames, setSelectedCategoryIds, setSelectedModelIds, setSelectedClassNames, setSelectedSchemaNames } = useSelection();
   
-  const hasSelections = selectedCategoryIds.length > 0 || selectedModelIds.length > 0 || selectedClassName;
+  const hasSelections = selectedCategoryIds.length > 0 || selectedModelIds.length > 0 || selectedClassNames.length > 0 || selectedSchemaNames.length > 0;
   
   if (!hasSelections) {
     return null;
   }
 
   const clearAllSelections = () => {
-    setSelectedCategoryIds([]);
-    setSelectedModelIds([]);
-    setSelectedClassName(undefined);
+  setSelectedCategoryIds([]);
+  setSelectedModelIds([]);
+  setSelectedClassNames([]);
+  setSelectedSchemaNames([]);
   };
 
   return (
@@ -77,7 +78,7 @@ function SelectionWarnings() {
                 {selectedModelIds.length} model{selectedModelIds.length === 1 ? '' : 's'}
               </Text>
             )}
-            {selectedClassName && (
+            {selectedClassNames.length > 0 && (
               <Text variant="small" style={{ 
                 backgroundColor: "#6f42c1", 
                 color: "white", 
@@ -85,7 +86,18 @@ function SelectionWarnings() {
                 borderRadius: "4px",
                 fontSize: "11px"
               }}>
-                Class: {selectedClassName.split('.').pop() || selectedClassName}
+                {selectedClassNames.length} class{selectedClassNames.length === 1 ? '' : 'es'}
+              </Text>
+            )}
+            {selectedSchemaNames.length > 0 && (
+              <Text variant="small" style={{ 
+                backgroundColor: "#0d6efd", 
+                color: "white", 
+                padding: "2px 6px", 
+                borderRadius: "4px",
+                fontSize: "11px"
+              }}>
+                {selectedSchemaNames.length} schema{selectedSchemaNames.length === 1 ? '' : 's'}
               </Text>
             )}
           </Flex>
@@ -129,7 +141,7 @@ export interface TableProps {
  */
 
 export function Table({ iModel, width: _width, height: _height, loadingContentState, noContentState, noRowsState }: TableProps) {
-  const { tableFilters, setAvailableFields, selectedCategoryIds, selectedModelIds, selectedClassName } = useSelection();
+  const { tableFilters, setAvailableFields, selectedCategoryIds, selectedModelIds, selectedClassNames, selectedSchemaNames } = useSelection();
   
   // Track loading state for initial data fetch
   const [isInitialLoading, setIsInitialLoading] = React.useState(true);
@@ -254,7 +266,7 @@ export function Table({ iModel, width: _width, height: _height, loadingContentSt
             {/* No Content Message Row */}
             <div style={{ padding: "2rem", display: "flex", justifyContent: "center", alignItems: "center", flex: 1 }}>
               <Text>
-                {tableFilters.length > 0 || selectedCategoryIds.length > 0 || selectedModelIds.length > 0 || selectedClassName
+                {tableFilters.length > 0 || selectedCategoryIds.length > 0 || selectedModelIds.length > 0 || selectedClassNames.length > 0 || selectedSchemaNames.length > 0
                   ? "No elements match the current filters or selections. Clear filters/selections above to see data." 
                   : "There is no content for current selection."}
               </Text>
