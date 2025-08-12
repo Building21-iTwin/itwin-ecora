@@ -112,34 +112,18 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
     categoryIds: string[],
     filters: TableFilter[],
     availFields: Field[],
-    classNames: string[],
-    schemaNames: string[]
+    _classNames: string[],
+    _schemaNames: string[]
   ) => {
     
     const iModel = IModelApp.viewManager.selectedView?.iModel;
     if (!iModel) return;
 
     // Build query with filters
-    const query = elementQuery(modelIds, categoryIds, filters, availFields, classNames, schemaNames);
+    const query = elementQuery(modelIds, categoryIds, filters, availFields);
     
-    // If no query (no selection and no filters), clear selection/emphasis so UI (TableGrid) reflects empty state
-    // This addresses cases where class/schema selections were previously applied and then cleared.
-    if (!query) {
-      const nothingSelected =
-        modelIds.length === 0 &&
-        categoryIds.length === 0 &&
-        filters.length === 0 &&
-        classNames.length === 0 &&
-        schemaNames.length === 0;
-      if (nothingSelected) {
-        // Only clear if there's no existing manual selection
-        const currentSelection = Presentation.selection.getSelection(iModel);
-        if (currentSelection.isEmpty) {
-          clearSelectionAndEmphasis();
-        }
-      }
-      return;
-    }
+    // If no query (no selection and no filters), do not override manual selection/emphasis
+    if (!query) return;
 
     const queryReader = iModel.createQueryReader(query, undefined, { rowFormat: QueryRowFormat.UseECSqlPropertyNames});
     const elements = await queryReader.toArray();
@@ -154,7 +138,7 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
       emphasize.clearEmphasizedElements(vp);
       emphasize.emphasizeElements(elements.map((el: any) => el.id), vp, undefined, true);
     }
-  }, [clearSelectionAndEmphasis]);
+  }, []);
 
   useEffect(() => {
     void updateSelectedElements(
@@ -174,7 +158,7 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
     } else {
       setSelectedModelIds(ids);
     }
-  if (ids.length === 0 && (type === "category" ? selectedModelIds.length : selectedCategoryIds.length) === 0) {
+    if (ids.length === 0 && (type === "category" ? selectedModelIds.length : selectedCategoryIds.length) === 0) {
       clearSelectionAndEmphasis();
     }
   };
