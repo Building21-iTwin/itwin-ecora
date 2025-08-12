@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-deprecated */
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { type Field, type Keys, KeySet } from "@itwin/presentation-common";
 import { Presentation } from "@itwin/presentation-frontend";
 import { IModelApp } from "@itwin/core-frontend";
@@ -64,6 +64,11 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   });
   
   const [availableFields, setAvailableFields] = useState<Field[]>([]);
+  // Keep a ref of availableFields to avoid triggering selection updates on manual selection (which changes columns)
+  const availableFieldsRef = useRef<Field[]>(availableFields);
+  useEffect(() => {
+    availableFieldsRef.current = availableFields;
+  }, [availableFields]);
 
   // Custom setTableFilters that also saves to localStorage
   const setTableFilters = (filters: TableFilter[]) => {
@@ -82,7 +87,6 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     try {
       localStorage.removeItem('itwin-grid-selected-classes');
-      localStorage.removeItem('itwin-grid-selected-schemas');
       localStorage.removeItem('itwin-grid-selection');
     } catch {
       // Ignore storage errors (SSR or restricted environments)
@@ -128,7 +132,11 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
         classNames.length === 0 &&
         schemaNames.length === 0;
       if (nothingSelected) {
-        clearSelectionAndEmphasis();
+        // Only clear if there's no existing manual selection
+        const currentSelection = Presentation.selection.getSelection(iModel);
+        if (currentSelection.isEmpty) {
+          clearSelectionAndEmphasis();
+        }
       }
       return;
     }
@@ -153,11 +161,11 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
       selectedModelIds,
       selectedCategoryIds,
       tableFilters,
-      availableFields,
+      availableFieldsRef.current,
       selectedClassNames,
       selectedSchemaNames
     );
-  }, [selectedModelIds, selectedCategoryIds, tableFilters, availableFields, selectedClassNames, selectedSchemaNames, updateSelectedElements]);
+  }, [selectedModelIds, selectedCategoryIds, tableFilters, selectedClassNames, selectedSchemaNames, updateSelectedElements]);
 
   // Update category/model selection handlers to pass availableFields
   const onSelectionChange = (type: "category" | "model", ids: string[]) => {
@@ -187,10 +195,10 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
         setTableFilters,
         availableFields,
         setAvailableFields,
-  selectedClassNames,
-  setSelectedClassNames,
-  selectedSchemaNames,
-  setSelectedSchemaNames,
+        selectedClassNames,
+        setSelectedClassNames,
+        selectedSchemaNames,
+        setSelectedSchemaNames,
         clearAllFilters,
       }}
     >
