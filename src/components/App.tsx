@@ -14,9 +14,6 @@ import { SelectionProvider } from "./shared/SelectionContext";
 export function App(props: ComponentProps<typeof Viewer>) {
   const { state } = useAuthorizationContext();
 
-
-
-
   return (
     <ThemeProvider>
       <SelectionProvider>

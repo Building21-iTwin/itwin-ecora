@@ -16,6 +16,7 @@ import {
 import { SvgClose, SvgFilter } from "@itwin/itwinui-icons-react";
 import type { Field } from "@itwin/presentation-common";
 import { type TableFilter, useSelection } from "../shared/SelectionContext";
+import { getFieldTypeInfo } from "../utils/FieldTypeInfo";
 
 export interface TableFilterProps {
   columnId: string;
@@ -24,28 +25,6 @@ export interface TableFilterProps {
   placeholder?: string;
 }
 
-// Utility: get type info and filterability for a field
-export function getFieldTypeInfo(field?: Field) {
-  if (!field) return { type: undefined, isNavigation: false, target: undefined, isFilterable: false };
-  const property = field.isPropertiesField?.() ? field.properties?.[0]?.property : undefined;
-  const relatedClassPath = (field as any).relatedClassPath;
-  const pathFromRoot = (field as any).pathFromRoot;
-  const isRelatedInstanceSpecification = (field as any).type === "relatedInstanceSpecification";
-  const fieldName = field.name?.toLowerCase() || "";
-  const isNavigation = !!(relatedClassPath || pathFromRoot || isRelatedInstanceSpecification || fieldName.includes("category") || fieldName.includes("model") || fieldName.includes("element"));
-  const isStringProperty = property?.type === "string";
-  const isFilterable = isStringProperty || isNavigation;
-  let target;
-  if (Array.isArray(relatedClassPath) && relatedClassPath.length > 0) {
-    target = relatedClassPath[relatedClassPath.length - 1]?.targetClassName;
-  }
-  return {
-    type: property?.type ?? (field as any).type,
-    isNavigation,
-    target,
-    isFilterable,
-  };
-}
 
 export function ColumnFilter({ columnId, columnLabel, field, placeholder }: TableFilterProps) {
   const { tableFilters, setTableFilters } = useSelection();
@@ -262,3 +241,5 @@ export function ActiveFiltersDisplay() {
     </Flex>
   );
 }
+export { getFieldTypeInfo };
+

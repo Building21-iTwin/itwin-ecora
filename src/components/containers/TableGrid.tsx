@@ -162,7 +162,6 @@ export function Table({ iModel, width: _width, height: _height, loadingContentSt
   }, [columns, setAvailableFields]);
 
   // Counter for number of elements (rows) - using actual rows since filtering is done on backend
-  const totalCount = rows ? rows.length : 0;
 
   if (columns === undefined) {
     return (
@@ -207,13 +206,6 @@ export function Table({ iModel, width: _width, height: _height, loadingContentSt
             <ActiveFiltersDisplay />
           </div>
           
-          {/* Element Count Display */}
-          <div style={{ padding: "0.5rem", fontWeight: 500, fontSize: "0.95rem", color: "#333" }}>
-            <Flex alignItems="center" gap="sm">
-              <Text>Showing 0 elements</Text>
-            </Flex>
-          </div>
-          
           {/* No Content Message Row */}
           <div style={{ padding: "2rem", display: "flex", justifyContent: "center", alignItems: "center", flex: 1 }}>
             <Text>
@@ -237,14 +229,6 @@ export function Table({ iModel, width: _width, height: _height, loadingContentSt
         <ActiveFiltersDisplay />
       </div>
       
-      {/* Element Count Display */}
-      <div style={{ padding: "0.5rem", fontWeight: 500, fontSize: "0.95rem", color: "#333" }}>
-        <Flex alignItems="center" gap="sm">
-          <Text>
-            Showing  {totalCount} element{totalCount === 1 ? "" : "s"}
-          </Text>
-        </Flex>
-      </div>
       
       {/* Table */}
       <div style={{ flex: 1, minHeight: 0 }}>
