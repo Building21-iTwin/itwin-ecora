@@ -78,6 +78,17 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   // Clear all table filters
   const clearAllFilters = () => setTableFilters([]);
 
+  // Do not persist class/schema selections: proactively remove any legacy keys
+  useEffect(() => {
+    try {
+      localStorage.removeItem('itwin-grid-selected-classes');
+      localStorage.removeItem('itwin-grid-selected-schemas');
+      localStorage.removeItem('itwin-grid-selection');
+    } catch {
+      // Ignore storage errors (SSR or restricted environments)
+    }
+  }, []);
+
   // Helper to clear all selections and emphasis
   const clearSelectionAndEmphasis = useCallback(() => {
     const iModel = IModelApp.viewManager.selectedView?.iModel;
