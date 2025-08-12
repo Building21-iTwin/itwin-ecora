@@ -23,9 +23,22 @@ import { ActiveFiltersDisplay, ColumnFilter } from "./TableFilter";
 
 // Component to show warnings for selected categories and models
 function SelectionWarnings() {
-  const { selectedCategoryIds, selectedModelIds, setSelectedCategoryIds, setSelectedModelIds } = useSelection();
+  const {
+    selectedCategoryIds,
+    selectedModelIds,
+    selectedClassNames,
+    selectedSchemaNames,
+    setSelectedCategoryIds,
+    setSelectedModelIds,
+    setSelectedClassNames,
+    setSelectedSchemaNames,
+  } = useSelection();
   
-  const hasSelections = selectedCategoryIds.length > 0 || selectedModelIds.length > 0;
+  const hasSelections =
+    selectedCategoryIds.length > 0 ||
+    selectedModelIds.length > 0 ||
+    selectedClassNames.length > 0 ||
+    selectedSchemaNames.length > 0;
   
   if (!hasSelections) {
     return null;
@@ -34,6 +47,8 @@ function SelectionWarnings() {
   const clearAllSelections = () => {
     setSelectedCategoryIds([]);
     setSelectedModelIds([]);
+    setSelectedClassNames([]);
+    setSelectedSchemaNames([]);
   };
 
   return (
@@ -70,6 +85,28 @@ function SelectionWarnings() {
                 fontSize: "11px"
               }}>
                 {selectedModelIds.length} model{selectedModelIds.length === 1 ? '' : 's'}
+              </Text>
+            )}
+            {selectedClassNames.length > 0 && (
+              <Text variant="small" style={{ 
+                backgroundColor: "#6f42c1", 
+                color: "white", 
+                padding: "2px 6px", 
+                borderRadius: "4px",
+                fontSize: "11px"
+              }}>
+                {selectedClassNames.length} class{selectedClassNames.length === 1 ? '' : 'es'}
+              </Text>
+            )}
+            {selectedSchemaNames.length > 0 && (
+              <Text variant="small" style={{ 
+                backgroundColor: "#0d6efd", 
+                color: "white", 
+                padding: "2px 6px", 
+                borderRadius: "4px",
+                fontSize: "11px"
+              }}>
+                {selectedSchemaNames.length} schema{selectedSchemaNames.length === 1 ? '' : 's'}
               </Text>
             )}
           </Flex>

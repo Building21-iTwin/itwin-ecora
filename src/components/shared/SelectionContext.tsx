@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-deprecated */
-import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { type Field, type Keys, KeySet } from "@itwin/presentation-common";
 import { Presentation } from "@itwin/presentation-frontend";
 import { IModelApp } from "@itwin/core-frontend";
@@ -78,19 +78,21 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   // Clear all table filters
   const clearAllFilters = () => setTableFilters([]);
 
-  useEffect(() => {
-    void updateSelectedElements(
-      selectedModelIds,
-      selectedCategoryIds,
-      tableFilters,
-      availableFields,
-      selectedClassNames,
-      selectedSchemaNames
-    );
-  }, [selectedModelIds, selectedCategoryIds, tableFilters, availableFields, selectedClassNames, selectedSchemaNames]);
+  // Helper to clear all selections and emphasis
+  const clearSelectionAndEmphasis = useCallback(() => {
+    const iModel = IModelApp.viewManager.selectedView?.iModel;
+    if (!iModel) return;
+    Presentation.selection.replaceSelection("My Selection", iModel, new KeySet());
+    const vp = IModelApp.viewManager.selectedView;
+    if (vp) {
+      void import("@itwin/core-frontend").then(({ EmphasizeElements }) => {
+        EmphasizeElements.getOrCreate(vp).clearEmphasizedElements(vp);
+      });
+    }
+  }, []);
 
-  // Update selected elements based on model, category, and filters
-  const updateSelectedElements = async (
+  // Update selected elements based on model, category, filters, and class/schema selections
+  const updateSelectedElements = useCallback(async (
     modelIds: string[],
     categoryIds: string[],
     filters: TableFilter[],
@@ -105,8 +107,18 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
     // Build query with filters
     const query = elementQuery(modelIds, categoryIds, filters, availFields, classNames, schemaNames);
     
-    // If no query (no selection and no filters), do not override manual selection/emphasis
+    // If no query (no selection and no filters), clear selection/emphasis so UI (TableGrid) reflects empty state
+    // This addresses cases where class/schema selections were previously applied and then cleared.
     if (!query) {
+      const nothingSelected =
+        modelIds.length === 0 &&
+        categoryIds.length === 0 &&
+        filters.length === 0 &&
+        classNames.length === 0 &&
+        schemaNames.length === 0;
+      if (nothingSelected) {
+        clearSelectionAndEmphasis();
+      }
       return;
     }
 
@@ -123,20 +135,18 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
       emphasize.clearEmphasizedElements(vp);
       emphasize.emphasizeElements(elements.map((el: any) => el.id), vp, undefined, true);
     }
-  }
+  }, [clearSelectionAndEmphasis]);
 
-  // Helper to clear all selections and emphasis
-  const clearSelectionAndEmphasis = () => {
-    const iModel = IModelApp.viewManager.selectedView?.iModel;
-    if (!iModel) return;
-    Presentation.selection.replaceSelection("My Selection", iModel, new KeySet());
-    const vp = IModelApp.viewManager.selectedView;
-    if (vp) {
-      void import("@itwin/core-frontend").then(({ EmphasizeElements }) => {
-        EmphasizeElements.getOrCreate(vp).clearEmphasizedElements(vp);
-      });
-    }
-  };
+  useEffect(() => {
+    void updateSelectedElements(
+      selectedModelIds,
+      selectedCategoryIds,
+      tableFilters,
+      availableFields,
+      selectedClassNames,
+      selectedSchemaNames
+    );
+  }, [selectedModelIds, selectedCategoryIds, tableFilters, availableFields, selectedClassNames, selectedSchemaNames, updateSelectedElements]);
 
   // Update category/model selection handlers to pass availableFields
   const onSelectionChange = (type: "category" | "model", ids: string[]) => {
