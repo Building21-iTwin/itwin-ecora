@@ -9,7 +9,8 @@
 import * as React from "react";
 import { PropertyRecord } from "@itwin/appui-abstract";
 import { IModelConnection } from "@itwin/core-frontend";
-import { Button, ProgressRadial, Text, Table as UiTable } from "@itwin/itwinui-react";
+import { Button, IconButton, ProgressRadial, Text, Table as UiTable } from "@itwin/itwinui-react";
+import { SvgClose } from "@itwin/itwinui-icons-react";
 import {
   TableCellRenderer,
   usePresentationTableWithUnifiedSelection,
@@ -31,11 +32,20 @@ function UnifiedFiltersDisplay() {
     setSelectedCategoryIds,
     setSelectedModelIds,
     setSelectedClassNames,
+  categoryLabels,
+  modelLabels,
     tableFilters,
+    setTableFilters,
     clearAllFilters,
   } = useSelection();
   
   const [isVisible, setIsVisible] = React.useState(true);
+  const [expandedCategories, setExpandedCategories] = React.useState(false);
+  const [expandedModels, setExpandedModels] = React.useState(false);
+  const [expandedClasses, setExpandedClasses] = React.useState(false);
+  const [expandedTableFilters, setExpandedTableFilters] = React.useState(false);
+  
+  // Labels come from SelectionContext now
   
   const hasSelections =
     selectedCategoryIds.length > 0 ||
@@ -46,6 +56,8 @@ function UnifiedFiltersDisplay() {
   const hasColumnFilters = tableFilters.length > 0;
   const hasAnyFilters = hasSelections || hasColumnFilters;
   
+  // No re-query here; labels are pushed from the selection lists
+  
   if (!hasAnyFilters) {
     return null;
   }
@@ -55,6 +67,45 @@ function UnifiedFiltersDisplay() {
     setSelectedModelIds([]);
     setSelectedClassNames([]);
     clearAllFilters();
+  };
+
+  // Individual removal functions
+  const removeCategoryFilter = () => {
+    setSelectedCategoryIds([]);
+    setExpandedCategories(false);
+  };
+
+  const removeModelFilter = () => {
+    setSelectedModelIds([]);
+    setExpandedModels(false);
+  };
+
+  const removeClassFilter = () => {
+    setSelectedClassNames([]);
+    setExpandedClasses(false);
+  };
+
+  const removeTableFilter = (filterId: string) => {
+    const updatedFilters = tableFilters.filter(filter => filter.id !== filterId);
+    setTableFilters(updatedFilters);
+  };
+
+  // Remove individual category
+  const removeCategory = (categoryId: string) => {
+    const updatedIds = selectedCategoryIds.filter(id => id !== categoryId);
+    setSelectedCategoryIds(updatedIds);
+  };
+
+  // Remove individual model
+  const removeModel = (modelId: string) => {
+    const updatedIds = selectedModelIds.filter(id => id !== modelId);
+    setSelectedModelIds(updatedIds);
+  };
+
+  // Remove individual class
+  const removeClass = (className: string) => {
+    const updatedNames = selectedClassNames.filter(name => name !== className);
+    setSelectedClassNames(updatedNames);
   };
 
   const totalFilters = selectedCategoryIds.length + selectedModelIds.length + selectedClassNames.length + tableFilters.length;
@@ -77,7 +128,29 @@ function UnifiedFiltersDisplay() {
     lineHeight: "1",
     minHeight: "22px",
     height: "22px",
-    gap: "2px"
+    gap: "4px",
+    cursor: "pointer",
+    position: "relative"
+  };
+
+  // Style for the close button that appears on hover
+  const closeButtonStyle: React.CSSProperties = {
+    padding: "1px",
+    minHeight: "12px",
+    minWidth: "12px",
+    color: "white",
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    borderRadius: "50%",
+    opacity: 0,
+    transition: "opacity 0.2s ease"
+  };
+
+  const individualItemStyle: React.CSSProperties = {
+    ...badgeStyle,
+    fontSize: "0.65rem",
+    minHeight: "20px",
+    height: "20px",
+    margin: "1px"
   };
 
   return (
@@ -119,33 +192,305 @@ function UnifiedFiltersDisplay() {
               flexWrap: "wrap", 
               marginLeft: "0.5rem"
             }}>
-              {/* Selection filters */}
+              {/* Selection filters with X buttons */}
               {selectedCategoryIds.length > 0 && (
-                <span style={{ ...badgeStyle, backgroundColor: "#fd7e14" }}>
-                  {selectedCategoryIds.length} {pluralize(selectedCategoryIds.length, "Category", "Categories")}
-                </span>
+                <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                  <button 
+                    style={{ 
+                      ...badgeStyle, 
+                      backgroundColor: "#fd7e14",
+                      border: "none"
+                    }}
+                    onClick={() => setExpandedCategories(!expandedCategories)}
+                    onMouseEnter={(e) => {
+                      const closeBtn = e.currentTarget.querySelector('.close-button') as HTMLElement;
+                      if (closeBtn) closeBtn.style.opacity = '1';
+                    }}
+                    onMouseLeave={(e) => {
+                      const closeBtn = e.currentTarget.querySelector('.close-button') as HTMLElement;
+                      if (closeBtn) closeBtn.style.opacity = '0';
+                    }}
+                  >
+                    <span>
+                      {selectedCategoryIds.length} {pluralize(selectedCategoryIds.length, "Category", "Categories")}
+                      {expandedCategories ? " ▲" : " ▼"}
+                    </span>
+                    <IconButton
+                      className="close-button"
+                      size="small"
+                      styleType="borderless"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeCategoryFilter();
+                      }}
+                      style={closeButtonStyle}
+                    >
+                      <SvgClose style={{ fontSize: "8px" }} />
+                    </IconButton>
+                  </button>
+                  {expandedCategories && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "2px", marginLeft: "10px" }}>
+                      {selectedCategoryIds.map(categoryId => (
+                        <span 
+                          key={categoryId}
+                          style={{
+                            ...individualItemStyle,
+                            backgroundColor: "#fd7e14"
+                          }}
+                          onMouseEnter={(e) => {
+                            const closeBtn = e.currentTarget.querySelector('.close-button') as HTMLElement;
+                            if (closeBtn) closeBtn.style.opacity = '1';
+                          }}
+                          onMouseLeave={(e) => {
+                            const closeBtn = e.currentTarget.querySelector('.close-button') as HTMLElement;
+                            if (closeBtn) closeBtn.style.opacity = '0';
+                          }}
+                        >
+                          <span>
+                            {categoryLabels[categoryId] || `Category ${categoryId}`}
+                          </span>
+                          <IconButton
+                            className="close-button"
+                            size="small"
+                            styleType="borderless"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeCategory(categoryId);
+                            }}
+                            style={closeButtonStyle}
+                          >
+                            <SvgClose style={{ fontSize: "6px" }} />
+                          </IconButton>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
+              
               {selectedModelIds.length > 0 && (
-                <span style={{ ...badgeStyle, backgroundColor: "#20c997" }}>
-                  {selectedModelIds.length} {pluralize(selectedModelIds.length, "Model")}
-                </span>
+                <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                  <button 
+                    style={{ 
+                      ...badgeStyle, 
+                      backgroundColor: "#20c997",
+                      border: "none"
+                    }}
+                    onClick={() => setExpandedModels(!expandedModels)}
+                    onMouseEnter={(e) => {
+                      const closeBtn = e.currentTarget.querySelector('.close-button') as HTMLElement;
+                      if (closeBtn) closeBtn.style.opacity = '1';
+                    }}
+                    onMouseLeave={(e) => {
+                      const closeBtn = e.currentTarget.querySelector('.close-button') as HTMLElement;
+                      if (closeBtn) closeBtn.style.opacity = '0';
+                    }}
+                  >
+                    <span>
+                      {selectedModelIds.length} {pluralize(selectedModelIds.length, "Model")}
+                      {expandedModels ? " ▲" : " ▼"}
+                    </span>
+                    <IconButton
+                      className="close-button"
+                      size="small"
+                      styleType="borderless"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeModelFilter();
+                      }}
+                      style={closeButtonStyle}
+                    >
+                      <SvgClose style={{ fontSize: "8px" }} />
+                    </IconButton>
+                  </button>
+                  {expandedModels && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "2px", marginLeft: "10px" }}>
+                      {selectedModelIds.map(modelId => (
+                        <span 
+                          key={modelId}
+                          style={{
+                            ...individualItemStyle,
+                            backgroundColor: "#20c997"
+                          }}
+                          onMouseEnter={(e) => {
+                            const closeBtn = e.currentTarget.querySelector('.close-button') as HTMLElement;
+                            if (closeBtn) closeBtn.style.opacity = '1';
+                          }}
+                          onMouseLeave={(e) => {
+                            const closeBtn = e.currentTarget.querySelector('.close-button') as HTMLElement;
+                            if (closeBtn) closeBtn.style.opacity = '0';
+                          }}
+                        >
+                          <span>
+                            {modelLabels[modelId] || `Model ${modelId}`}
+                          </span>
+                          <IconButton
+                            className="close-button"
+                            size="small"
+                            styleType="borderless"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeModel(modelId);
+                            }}
+                            style={closeButtonStyle}
+                          >
+                            <SvgClose style={{ fontSize: "6px" }} />
+                          </IconButton>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
+              
               {selectedClassNames.length > 0 && (
-                <span style={{ ...badgeStyle, backgroundColor: "#6f42c1" }}>
-                  {selectedClassNames.length} {pluralize(selectedClassNames.length, "Class", "Classes")}
-                </span>
+                <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                  <button 
+                    style={{ 
+                      ...badgeStyle, 
+                      backgroundColor: "#6f42c1",
+                      border: "none"
+                    }}
+                    onClick={() => setExpandedClasses(!expandedClasses)}
+                    onMouseEnter={(e) => {
+                      const closeBtn = e.currentTarget.querySelector('.close-button') as HTMLElement;
+                      if (closeBtn) closeBtn.style.opacity = '1';
+                    }}
+                    onMouseLeave={(e) => {
+                      const closeBtn = e.currentTarget.querySelector('.close-button') as HTMLElement;
+                      if (closeBtn) closeBtn.style.opacity = '0';
+                    }}
+                  >
+                    <span>
+                      {selectedClassNames.length} {pluralize(selectedClassNames.length, "Class", "Classes")}
+                      {expandedClasses ? " ▲" : " ▼"}
+                    </span>
+                    <IconButton
+                      className="close-button"
+                      size="small"
+                      styleType="borderless"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeClassFilter();
+                      }}
+                      style={closeButtonStyle}
+                    >
+                      <SvgClose style={{ fontSize: "8px" }} />
+                    </IconButton>
+                  </button>
+                  {expandedClasses && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "2px", marginLeft: "10px" }}>
+                      {selectedClassNames.map(className => (
+                        <span 
+                          key={className}
+                          style={{
+                            ...individualItemStyle,
+                            backgroundColor: "#6f42c1"
+                          }}
+                          onMouseEnter={(e) => {
+                            const closeBtn = e.currentTarget.querySelector('.close-button') as HTMLElement;
+                            if (closeBtn) closeBtn.style.opacity = '1';
+                          }}
+                          onMouseLeave={(e) => {
+                            const closeBtn = e.currentTarget.querySelector('.close-button') as HTMLElement;
+                            if (closeBtn) closeBtn.style.opacity = '0';
+                          }}
+                        >
+                          <span>
+                            {className}
+                          </span>
+                          <IconButton
+                            className="close-button"
+                            size="small"
+                            styleType="borderless"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeClass(className);
+                            }}
+                            style={closeButtonStyle}
+                          >
+                            <SvgClose style={{ fontSize: "6px" }} />
+                          </IconButton>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}          
-              {/* Column filters */}
-              {tableFilters.map((filter) => (
-                <span 
-                  key={filter.id}
-                  style={{ ...badgeStyle, backgroundColor: "#17a2b8" }}
-                >
-                  <span>
-                    &ldquo;{filter.value}&rdquo;
-                  </span>
-                </span>
-              ))}
+              
+              {/* Column filters with expandable functionality */}
+              {tableFilters.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                  <button 
+                    style={{ 
+                      ...badgeStyle, 
+                      backgroundColor: "#17a2b8",
+                      border: "none"
+                    }}
+                    onClick={() => setExpandedTableFilters(!expandedTableFilters)}
+                    onMouseEnter={(e) => {
+                      const closeBtn = e.currentTarget.querySelector('.close-button') as HTMLElement;
+                      if (closeBtn) closeBtn.style.opacity = '1';
+                    }}
+                    onMouseLeave={(e) => {
+                      const closeBtn = e.currentTarget.querySelector('.close-button') as HTMLElement;
+                      if (closeBtn) closeBtn.style.opacity = '0';
+                    }}
+                  >
+                    <span>
+                      {tableFilters.length} {pluralize(tableFilters.length, "Filter")}
+                      {expandedTableFilters ? " ▲" : " ▼"}
+                    </span>
+                    <IconButton
+                      className="close-button"
+                      size="small"
+                      styleType="borderless"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        clearAllFilters();
+                        setExpandedTableFilters(false);
+                      }}
+                      style={closeButtonStyle}
+                    >
+                      <SvgClose style={{ fontSize: "8px" }} />
+                    </IconButton>
+                  </button>
+                  {expandedTableFilters && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "2px", marginLeft: "10px" }}>
+                      {tableFilters.map((filter) => (
+                        <span 
+                          key={filter.id}
+                          style={{
+                            ...individualItemStyle,
+                            backgroundColor: "#17a2b8"
+                          }}
+                          onMouseEnter={(e) => {
+                            const closeBtn = e.currentTarget.querySelector('.close-button') as HTMLElement;
+                            if (closeBtn) closeBtn.style.opacity = '1';
+                          }}
+                          onMouseLeave={(e) => {
+                            const closeBtn = e.currentTarget.querySelector('.close-button') as HTMLElement;
+                            if (closeBtn) closeBtn.style.opacity = '0';
+                          }}
+                        >
+                          <span>
+                            &ldquo;{filter.value}&rdquo;
+                          </span>
+                          <IconButton
+                            className="close-button"
+                            size="small"
+                            styleType="borderless"
+                            onClick={() => removeTableFilter(filter.id)}
+                            style={closeButtonStyle}
+                          >
+                            <SvgClose style={{ fontSize: "6px" }} />
+                          </IconButton>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>

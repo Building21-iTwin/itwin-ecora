@@ -20,6 +20,10 @@ export interface SelectionState {
   setSelectedCategoryIds: (ids: string[]) => void;
   selectedModelIds: string[];
   setSelectedModelIds: (ids: string[]) => void;
+  categoryLabels: Record<string, string>;
+  setCategoryLabels: (labels: Record<string, string>) => void;
+  modelLabels: Record<string, string>;
+  setModelLabels: (labels: Record<string, string>) => void;
   tableFilters: TableFilter[];
   setTableFilters: (filters: TableFilter[]) => void;
   availableFields: Field[];
@@ -50,6 +54,8 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
+  const [categoryLabels, setCategoryLabels] = useState<Record<string, string>>({});
+  const [modelLabels, setModelLabels] = useState<Record<string, string>>({});
   const [selectedClassNames, setSelectedClassNames] = useState<string[]>([]);
   const [selectedSchemaNames, setSelectedSchemaNames] = useState<string[]>([]);
   
@@ -123,7 +129,6 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
     const query = elementQuery(modelIds, categoryIds, filters, availFields, classNames, schemaNames);
     
     // If no query (no selection and no filters), clear selection/emphasis so UI (TableGrid) reflects empty state
-    // This addresses cases where class/schema selections were previously applied and then cleared.
     if (!query) {
       const nothingSelected =
         modelIds.length === 0 &&
@@ -132,11 +137,8 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
         classNames.length === 0 &&
         schemaNames.length === 0;
       if (nothingSelected) {
-        // Only clear if there's no existing manual selection
-        const currentSelection = Presentation.selection.getSelection(iModel);
-        if (currentSelection.isEmpty) {
-          clearSelectionAndEmphasis();
-        }
+        // Clear selection unconditionally when all selection criteria are cleared
+        clearSelectionAndEmphasis();
       }
       return;
     }
@@ -171,8 +173,10 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   const onSelectionChange = (type: "category" | "model", ids: string[]) => {
     if (type === "category") {
       setSelectedCategoryIds(ids);
+      if (ids.length === 0) setCategoryLabels({});
     } else {
       setSelectedModelIds(ids);
+      if (ids.length === 0) setModelLabels({});
     }
   if (ids.length === 0 && (type === "category" ? selectedModelIds.length : selectedCategoryIds.length) === 0) {
       clearSelectionAndEmphasis();
@@ -191,6 +195,10 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
         setSelectedCategoryIds: setSelectedIdsWrapper("category"),
         selectedModelIds,
         setSelectedModelIds: setSelectedIdsWrapper("model"),
+  categoryLabels,
+  setCategoryLabels,
+  modelLabels,
+  setModelLabels,
         tableFilters,
         setTableFilters,
         availableFields,
