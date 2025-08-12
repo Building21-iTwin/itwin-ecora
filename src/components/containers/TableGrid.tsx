@@ -9,7 +9,7 @@
 import * as React from "react";
 import { PropertyRecord } from "@itwin/appui-abstract";
 import { IModelConnection } from "@itwin/core-frontend";
-import { Button, Flex, ProgressRadial, Text, Table as UiTable } from "@itwin/itwinui-react";
+import { Button, ProgressRadial, Text, Table as UiTable } from "@itwin/itwinui-react";
 import {
   TableCellRenderer,
   usePresentationTableWithUnifiedSelection,
@@ -19,70 +19,151 @@ import type {
   TableRowDefinition,
 } from "@itwin/presentation-components";
 import { useSelection } from "../shared/SelectionContext";
-import { ActiveFiltersDisplay, ColumnFilter } from "./TableFilter";
+import { ColumnFilter } from "./TableFilter";
 
-// Component to show warnings for selected categories and models
-function SelectionWarnings() {
-  const { selectedCategoryIds, selectedModelIds, setSelectedCategoryIds, setSelectedModelIds } = useSelection();
+// Unified component to show all active filters (selections + column filters)
+function UnifiedFiltersDisplay() {
+  const {
+    selectedCategoryIds,
+    selectedModelIds,
+    selectedClassNames,
+    selectedSchemaNames,
+    setSelectedCategoryIds,
+    setSelectedModelIds,
+    setSelectedClassNames,
+    tableFilters,
+    clearAllFilters,
+  } = useSelection();
   
-  const hasSelections = selectedCategoryIds.length > 0 || selectedModelIds.length > 0;
+  const [isVisible, setIsVisible] = React.useState(true);
   
-  if (!hasSelections) {
+  const hasSelections =
+    selectedCategoryIds.length > 0 ||
+    selectedModelIds.length > 0 ||
+    selectedClassNames.length > 0 ||
+    selectedSchemaNames.length > 0;
+    
+  const hasColumnFilters = tableFilters.length > 0;
+  const hasAnyFilters = hasSelections || hasColumnFilters;
+  
+  if (!hasAnyFilters) {
     return null;
   }
 
   const clearAllSelections = () => {
     setSelectedCategoryIds([]);
     setSelectedModelIds([]);
+    setSelectedClassNames([]);
+    clearAllFilters();
+  };
+
+  const totalFilters = selectedCategoryIds.length + selectedModelIds.length + selectedClassNames.length + tableFilters.length;
+
+  // Helper function for singular/plural
+  const pluralize = (count: number, singular: string, plural?: string) => {
+    if (count === 1) return singular;
+    return plural || `${singular}s`;
+  };
+
+  // Shared badge style for all filter/selection bubbles
+  const badgeStyle: React.CSSProperties = {
+    color: "white",
+    padding: "1px 6px",
+    borderRadius: "8px",
+    fontSize: "0.7rem",
+    fontWeight: 500,
+    display: "inline-flex",
+    alignItems: "center",
+    lineHeight: "1",
+    minHeight: "22px",
+    height: "22px",
+    gap: "2px"
   };
 
   return (
     <div style={{ 
-      padding: "0.5rem", 
-      backgroundColor: "#fff3cd", 
-      border: "1px solid #ffeaa7", 
-      borderRadius: "4px",
-      marginBottom: "0.5rem"
+      padding: "0.2rem 0.4rem", 
+      backgroundColor: "#f8f9fa", 
+      borderLeft: "2px solid #007bff", 
+      borderRadius: "0 3px 3px 0",
+      marginBottom: "0.15rem",
+      fontSize: "0.7rem"
     }}>
-      <Flex alignItems="center" gap="sm" justifyContent="space-between">
-        <Flex alignItems="center" gap="sm">
-          <Text variant="small" style={{ fontWeight: 500, color: "#856404" }}>
-            ⚠️ Active selections filtering results:
-          </Text>
-          <Flex gap="xs" style={{ flexWrap: "wrap" }}>
-            {selectedCategoryIds.length > 0 && (
-              <Text variant="small" style={{ 
-                backgroundColor: "#fd7e14", 
-                color: "white", 
-                padding: "2px 6px", 
-                borderRadius: "4px",
-                fontSize: "11px"
-              }}>
-                {selectedCategoryIds.length} categor{selectedCategoryIds.length === 1 ? 'y' : 'ies'}
-              </Text>
-            )}
-            {selectedModelIds.length > 0 && (
-              <Text variant="small" style={{ 
-                backgroundColor: "#20c997", 
-                color: "white", 
-                padding: "2px 6px", 
-                borderRadius: "4px",
-                fontSize: "11px"
-              }}>
-                {selectedModelIds.length} model{selectedModelIds.length === 1 ? '' : 's'}
-              </Text>
-            )}
-          </Flex>
-        </Flex>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", flex: 1 }}>
+          <Button
+            size="small"
+            styleType="borderless"
+            onClick={() => setIsVisible(!isVisible)}
+            style={{ 
+              minHeight: "16px",
+              minWidth: "16px",
+              padding: "0",
+              color: "#0056b3",
+              fontSize: "0.6rem"
+            }}
+          >
+            {isVisible ? "−" : "+"}
+          </Button>
+          <span style={{ 
+            fontWeight: 600, 
+            color: "#0056b3"
+          }}>
+            {totalFilters} active {pluralize(totalFilters, "filter")}
+          </span>
+          
+          {isVisible && (
+            <div style={{ 
+              display: "flex", 
+              gap: "0.2rem", 
+              flexWrap: "wrap", 
+              marginLeft: "0.5rem"
+            }}>
+              {/* Selection filters */}
+              {selectedCategoryIds.length > 0 && (
+                <span style={{ ...badgeStyle, backgroundColor: "#fd7e14" }}>
+                  {selectedCategoryIds.length} {pluralize(selectedCategoryIds.length, "Category", "Categories")}
+                </span>
+              )}
+              {selectedModelIds.length > 0 && (
+                <span style={{ ...badgeStyle, backgroundColor: "#20c997" }}>
+                  {selectedModelIds.length} {pluralize(selectedModelIds.length, "Model")}
+                </span>
+              )}
+              {selectedClassNames.length > 0 && (
+                <span style={{ ...badgeStyle, backgroundColor: "#6f42c1" }}>
+                  {selectedClassNames.length} {pluralize(selectedClassNames.length, "Class", "Classes")}
+                </span>
+              )}          
+              {/* Column filters */}
+              {tableFilters.map((filter) => (
+                <span 
+                  key={filter.id}
+                  style={{ ...badgeStyle, backgroundColor: "#17a2b8" }}
+                >
+                  <span>
+                    &ldquo;{filter.value}&rdquo;
+                  </span>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        
         <Button 
           size="small" 
           styleType="borderless" 
           onClick={clearAllSelections}
-          style={{ color: "#856404" }}
+          style={{ 
+            color: "#0056b3",
+            fontSize: "0.6rem",
+            padding: "0.1rem 0.3rem",
+            minHeight: "auto"
+          }}
         >
-          Clear selections
+          Clear All
         </Button>
-      </Flex>
+      </div>
     </div>
   );
 }
@@ -162,29 +243,17 @@ export function Table({ iModel, width: _width, height: _height, loadingContentSt
   }, [columns, setAvailableFields]);
 
   // Counter for number of elements (rows) - using actual rows since filtering is done on backend
-  const totalCount = rows ? rows.length : 0;
+  // const totalCount = rows ? rows.length : 0;
 
   if (columns === undefined) {
     return (
       loadingContentState?.() ?? (
         <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
-          {/* Selection Warnings - Always shown */}
-          <SelectionWarnings />
-          
-          {/* Active Filters Display - Always shown */}
-          <div style={{ padding: "0.5rem" }}>
-            <ActiveFiltersDisplay />
-          </div>
-          
-          {/* Element Count Display */}
-          <div style={{ padding: "0.5rem", fontWeight: 500, fontSize: "0.95rem", color: "#333" }}>
-            <Flex alignItems="center" gap="sm">
-              <Text>Loading...</Text>
-            </Flex>
-          </div>
+          {/* Unified Filters Display */}
+          <UnifiedFiltersDisplay />
           
           {/* Loading Message Row */}
-          <div style={{ padding: "2rem", display: "flex", justifyContent: "center", alignItems: "center", flex: 1 }}>
+          <div style={{ padding: "1rem", display: "flex", justifyContent: "center", alignItems: "center", flex: 1 }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
               <ProgressRadial size="large" indeterminate={true} />
               <Text>Loading table content...</Text>
@@ -199,23 +268,11 @@ export function Table({ iModel, width: _width, height: _height, loadingContentSt
     return (
       noContentState?.() ?? (
         <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
-          {/* Selection Warnings - Always shown */}
-          <SelectionWarnings />
-          
-          {/* Active Filters Display - Always shown */}
-          <div style={{ padding: "0.5rem" }}>
-            <ActiveFiltersDisplay />
-          </div>
-          
-          {/* Element Count Display */}
-          <div style={{ padding: "0.5rem", fontWeight: 500, fontSize: "0.95rem", color: "#333" }}>
-            <Flex alignItems="center" gap="sm">
-              <Text>Showing 0 elements</Text>
-            </Flex>
-          </div>
+          {/* Unified Filters Display */}
+          <UnifiedFiltersDisplay />
           
           {/* No Content Message Row */}
-          <div style={{ padding: "2rem", display: "flex", justifyContent: "center", alignItems: "center", flex: 1 }}>
+          <div style={{ padding: "1rem", display: "flex", justifyContent: "center", alignItems: "center", flex: 1 }}>
             <Text>
               {tableFilters.length > 0 || selectedCategoryIds.length > 0 || selectedModelIds.length > 0 
                 ? "No elements match the current filters or selections. Clear filters/selections above to see data." 
@@ -229,24 +286,10 @@ export function Table({ iModel, width: _width, height: _height, loadingContentSt
 
   return (
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
-      {/* Selection Warnings */}
-      <SelectionWarnings />
+      {/* Unified Filters Display */}
+      <UnifiedFiltersDisplay />
       
-      {/* Active Filters Display - Always shown */}
-      <div style={{ padding: "0.5rem" }}>
-        <ActiveFiltersDisplay />
-      </div>
-      
-      {/* Element Count Display */}
-      <div style={{ padding: "0.5rem", fontWeight: 500, fontSize: "0.95rem", color: "#333" }}>
-        <Flex alignItems="center" gap="sm">
-          <Text>
-            Showing  {totalCount} element{totalCount === 1 ? "" : "s"}
-          </Text>
-        </Flex>
-      </div>
-      
-      {/* Table */}
+      {/* Table - Takes up most of the space */}
       <div style={{ flex: 1, minHeight: 0 }}>
         {isInitialLoading || isLoading ? (
           <div style={{ padding: "2rem", display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>

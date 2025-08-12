@@ -28,6 +28,7 @@ export class BottomGridUIProvider implements UiItemsProvider {
         content: <RulesTable />,
       };
       widgets.push(bottomGrid);
+      
     }
     return widgets;
   }

@@ -16,6 +16,7 @@ import {
 import { SvgClose, SvgFilter } from "@itwin/itwinui-icons-react";
 import type { Field } from "@itwin/presentation-common";
 import { type TableFilter, useSelection } from "../shared/SelectionContext";
+import { getFieldTypeInfo } from "../utils/FieldTypeInfo";
 
 export interface TableFilterProps {
   columnId: string;
@@ -24,28 +25,6 @@ export interface TableFilterProps {
   placeholder?: string;
 }
 
-// Utility: get type info and filterability for a field
-export function getFieldTypeInfo(field?: Field) {
-  if (!field) return { type: undefined, isNavigation: false, target: undefined, isFilterable: false };
-  const property = field.isPropertiesField?.() ? field.properties?.[0]?.property : undefined;
-  const relatedClassPath = (field as any).relatedClassPath;
-  const pathFromRoot = (field as any).pathFromRoot;
-  const isRelatedInstanceSpecification = (field as any).type === "relatedInstanceSpecification";
-  const fieldName = field.name?.toLowerCase() || "";
-  const isNavigation = !!(relatedClassPath || pathFromRoot || isRelatedInstanceSpecification || fieldName.includes("category") || fieldName.includes("model") || fieldName.includes("element"));
-  const isStringProperty = property?.type === "string";
-  const isFilterable = isStringProperty || isNavigation;
-  let target;
-  if (Array.isArray(relatedClassPath) && relatedClassPath.length > 0) {
-    target = relatedClassPath[relatedClassPath.length - 1]?.targetClassName;
-  }
-  return {
-    type: property?.type ?? (field as any).type,
-    isNavigation,
-    target,
-    isFilterable,
-  };
-}
 
 export function ColumnFilter({ columnId, columnLabel, field, placeholder }: TableFilterProps) {
   const { tableFilters, setTableFilters } = useSelection();
@@ -195,70 +174,113 @@ export function ColumnFilter({ columnId, columnLabel, field, placeholder }: Tabl
 // Component to show active filters summary
 export function ActiveFiltersDisplay() { 
   const { tableFilters, setTableFilters, clearAllFilters } = useSelection();
+  const [isVisible, setIsVisible] = useState(true);
+
+  if (tableFilters.length === 0) {
+    return null;
+  }
 
   return (
-    <Flex alignItems="center" gap="sm" style={{ 
-      padding: "8px", 
-      backgroundColor: tableFilters.length > 0 ? "#f8f9fa" : "#f1f3f5", 
-      borderRadius: "4px",
-      border: tableFilters.length > 0 ? "1px solid #dee2e6" : "1px solid #e9ecef"
+    <div style={{ 
+      padding: "0.2rem 0.4rem", 
+      backgroundColor: "#f8f9fa", 
+      borderLeft: "2px solid #0073e6",
+      borderRadius: "0 3px 3px 0",
+      marginBottom: "0.15rem",
+      fontSize: "0.7rem"
     }}>
-      <Text variant="small" style={{ fontWeight: 500 }}>
-        {tableFilters.length > 0 ? "Active filters:" : "No active filters"}
-      </Text>
-      {tableFilters.length > 0 ? (
-        <>
-          <Flex gap="xs" style={{ flexWrap: "wrap" }}>
-            {tableFilters.map((filter) => (
-              <span 
-                key={filter.id}
-                style={{ 
-                  backgroundColor: "#0073e6", 
-                  color: "white", 
-                  fontSize: "11px", 
-                  padding: "2px 6px",
-                  borderRadius: "4px",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "4px"
-                }}
-              >
-                {filter.id}: &ldquo;{filter.value}&rdquo;
-                <IconButton
-                  size="small"
-                  styleType="borderless"
-                  onClick={() => {
-                    const updatedFilters = tableFilters.filter(f => f.id !== filter.id);
-                    setTableFilters(updatedFilters);
-                  }}
-                  style={{ 
-                    marginLeft: "4px", 
-                    padding: "1px",
-                    minHeight: "14px",
-                    minWidth: "14px",
-                    color: "white"
-                  }}
-                >
-                  <SvgClose style={{ fontSize: "8px" }} />
-                </IconButton>
-              </span>
-            ))}
-          </Flex>
-          <IconButton
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", flex: 1 }}>
+          <Button
             size="small"
             styleType="borderless"
-            onClick={clearAllFilters}
-            label="Clear all filters"
-            style={{ marginLeft: "auto" }}
+            onClick={() => setIsVisible(!isVisible)}
+            style={{ 
+              minHeight: "16px",
+              minWidth: "16px",
+              padding: "0",
+              color: "#0056b3",
+              fontSize: "0.6rem"
+            }}
           >
-            <SvgClose />
-          </IconButton>
-        </>
-      ) : (
-        <Text variant="small" style={{ color: "#6c757d", fontStyle: "italic" }}>
-          Use column filter buttons to filter table data
-        </Text>
-      )}
-    </Flex>
+            {isVisible ? "−" : "+"}
+          </Button>
+          <span style={{ 
+            fontWeight: 600, 
+            color: "#0056b3"
+          }}>
+            {tableFilters.length} filter{tableFilters.length === 1 ? "" : "s"} active
+          </span>
+          
+          {isVisible && (
+            <div style={{ 
+              display: "flex", 
+              gap: "0.2rem", 
+              flexWrap: "wrap", 
+              marginLeft: "0.5rem"
+            }}>
+              {tableFilters.map((filter) => (
+                <span 
+                  key={filter.id}
+                  style={{ 
+                    backgroundColor: "#0073e6", 
+                    color: "white", 
+                    fontSize: "0.6rem", 
+                    padding: "1px 4px",
+                    borderRadius: "8px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "2px",
+                    fontWeight: 500,
+                    maxWidth: "100px",
+                    overflow: "hidden"
+                  }}
+                >
+                  <span style={{ 
+                    overflow: "hidden", 
+                    textOverflow: "ellipsis", 
+                    whiteSpace: "nowrap" 
+                  }}>
+                    {filter.id}: &ldquo;{filter.value}&rdquo;
+                  </span>
+                  <IconButton
+                    size="small"
+                    styleType="borderless"
+                    onClick={() => {
+                      const updatedFilters = tableFilters.filter(f => f.id !== filter.id);
+                      setTableFilters(updatedFilters);
+                    }}
+                    style={{ 
+                      padding: "1px",
+                      minHeight: "10px",
+                      minWidth: "10px",
+                      color: "white",
+                      backgroundColor: "rgba(255, 255, 255, 0.2)",
+                      borderRadius: "50%"
+                    }}
+                  >
+                    <SvgClose style={{ fontSize: "6px" }} />
+                  </IconButton>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        <Button 
+          size="small" 
+          styleType="borderless" 
+          onClick={clearAllFilters}
+          style={{ 
+            color: "#0056b3",
+            fontSize: "0.6rem",
+            padding: "0.1rem 0.3rem",
+            minHeight: "auto"
+          }}
+        >
+          Clear
+        </Button>
+      </div>
+    </div>
   );
 }

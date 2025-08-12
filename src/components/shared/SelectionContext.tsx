@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-deprecated */
-import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { type Field, type Keys, KeySet } from "@itwin/presentation-common";
 import { Presentation } from "@itwin/presentation-frontend";
 import { IModelApp } from "@itwin/core-frontend";
@@ -24,6 +24,10 @@ export interface SelectionState {
   setTableFilters: (filters: TableFilter[]) => void;
   availableFields: Field[];
   setAvailableFields: (fields: Field[]) => void;
+  selectedClassNames: string[];
+  setSelectedClassNames: (classNames: string[]) => void;
+  selectedSchemaNames: string[];
+  setSelectedSchemaNames: (schemaNames: string[]) => void;
   clearAllFilters: () => void;
 }
 
@@ -46,6 +50,8 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
+  const [selectedClassNames, setSelectedClassNames] = useState<string[]>([]);
+  const [selectedSchemaNames, setSelectedSchemaNames] = useState<string[]>([]);
   
   // Load saved filters from localStorage on initialization
   const [tableFilters, setTableFiltersState] = useState<TableFilter[]>(() => {
@@ -58,6 +64,11 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   });
   
   const [availableFields, setAvailableFields] = useState<Field[]>([]);
+  // Keep a ref of availableFields to avoid triggering selection updates on manual selection (which changes columns)
+  const availableFieldsRef = useRef<Field[]>(availableFields);
+  useEffect(() => {
+    availableFieldsRef.current = availableFields;
+  }, [availableFields]);
 
   // Custom setTableFilters that also saves to localStorage
   const setTableFilters = (filters: TableFilter[]) => {
@@ -72,20 +83,63 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   // Clear all table filters
   const clearAllFilters = () => setTableFilters([]);
 
+  // Do not persist class/schema selections: proactively remove any legacy keys
   useEffect(() => {
-    void updateSelectedElements(selectedModelIds, selectedCategoryIds, tableFilters, availableFields);
-  }, [selectedModelIds, selectedCategoryIds, tableFilters, availableFields]);
+    try {
+      localStorage.removeItem('itwin-grid-selected-classes');
+      localStorage.removeItem('itwin-grid-selection');
+    } catch {
+      // Ignore storage errors (SSR or restricted environments)
+    }
+  }, []);
 
-  // Update selected elements based on model, category, and filters
-  const updateSelectedElements = async (modelIds: string[], categoryIds: string[], filters: TableFilter[], availFields: Field[]) => {
+  // Helper to clear all selections and emphasis
+  const clearSelectionAndEmphasis = useCallback(() => {
+    const iModel = IModelApp.viewManager.selectedView?.iModel;
+    if (!iModel) return;
+    Presentation.selection.replaceSelection("My Selection", iModel, new KeySet());
+    const vp = IModelApp.viewManager.selectedView;
+    if (vp) {
+      void import("@itwin/core-frontend").then(({ EmphasizeElements }) => {
+        EmphasizeElements.getOrCreate(vp).clearEmphasizedElements(vp);
+      });
+    }
+  }, []);
+
+  // Update selected elements based on model, category, filters, and class/schema selections
+  const updateSelectedElements = useCallback(async (
+    modelIds: string[],
+    categoryIds: string[],
+    filters: TableFilter[],
+    availFields: Field[],
+    classNames: string[],
+    schemaNames: string[]
+  ) => {
+    
     const iModel = IModelApp.viewManager.selectedView?.iModel;
     if (!iModel) return;
 
     // Build query with filters
-    const query = elementQuery(modelIds, categoryIds, filters, availFields);
+    const query = elementQuery(modelIds, categoryIds, filters, availFields, classNames, schemaNames);
     
-    // If no query (no selection and no filters), do not override manual selection/emphasis
-    if (!query) return;
+    // If no query (no selection and no filters), clear selection/emphasis so UI (TableGrid) reflects empty state
+    // This addresses cases where class/schema selections were previously applied and then cleared.
+    if (!query) {
+      const nothingSelected =
+        modelIds.length === 0 &&
+        categoryIds.length === 0 &&
+        filters.length === 0 &&
+        classNames.length === 0 &&
+        schemaNames.length === 0;
+      if (nothingSelected) {
+        // Only clear if there's no existing manual selection
+        const currentSelection = Presentation.selection.getSelection(iModel);
+        if (currentSelection.isEmpty) {
+          clearSelectionAndEmphasis();
+        }
+      }
+      return;
+    }
 
     const queryReader = iModel.createQueryReader(query, undefined, { rowFormat: QueryRowFormat.UseECSqlPropertyNames});
     const elements = await queryReader.toArray();
@@ -100,20 +154,18 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
       emphasize.clearEmphasizedElements(vp);
       emphasize.emphasizeElements(elements.map((el: any) => el.id), vp, undefined, true);
     }
-  }
+  }, [clearSelectionAndEmphasis]);
 
-  // Helper to clear all selections and emphasis
-  const clearSelectionAndEmphasis = () => {
-    const iModel = IModelApp.viewManager.selectedView?.iModel;
-    if (!iModel) return;
-    Presentation.selection.replaceSelection("My Selection", iModel, new KeySet());
-    const vp = IModelApp.viewManager.selectedView;
-    if (vp) {
-      void import("@itwin/core-frontend").then(({ EmphasizeElements }) => {
-        EmphasizeElements.getOrCreate(vp).clearEmphasizedElements(vp);
-      });
-    }
-  };
+  useEffect(() => {
+    void updateSelectedElements(
+      selectedModelIds,
+      selectedCategoryIds,
+      tableFilters,
+      availableFieldsRef.current,
+      selectedClassNames,
+      selectedSchemaNames
+    );
+  }, [selectedModelIds, selectedCategoryIds, tableFilters, selectedClassNames, selectedSchemaNames, updateSelectedElements]);
 
   // Update category/model selection handlers to pass availableFields
   const onSelectionChange = (type: "category" | "model", ids: string[]) => {
@@ -122,7 +174,7 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
     } else {
       setSelectedModelIds(ids);
     }
-    if (ids.length === 0 && (type === "category" ? selectedModelIds.length : selectedCategoryIds.length) === 0) {
+  if (ids.length === 0 && (type === "category" ? selectedModelIds.length : selectedCategoryIds.length) === 0) {
       clearSelectionAndEmphasis();
     }
   };
@@ -143,6 +195,10 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
         setTableFilters,
         availableFields,
         setAvailableFields,
+        selectedClassNames,
+        setSelectedClassNames,
+        selectedSchemaNames,
+        setSelectedSchemaNames,
         clearAllFilters,
       }}
     >
