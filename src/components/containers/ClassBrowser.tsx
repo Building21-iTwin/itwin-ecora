@@ -7,21 +7,8 @@ import React, { useEffect, useState } from "react";
 import { Button, Flex, Input, ProgressRadial } from "@itwin/itwinui-react";
 import { IModelConnection } from "@itwin/core-frontend";
 import { QueryRowFormat } from "@itwin/core-common";
+import { schemaDiscoveryQuery } from "../utils/QueryBuilders";
 import { useSelection } from "../shared/SelectionContext";
-
-// Query to discover all classes and their element counts
-const schemaDiscoveryQuery = () => `
-  SELECT 
-    ec_classname(e.ECClassId, 's.c') as className,
-    ec_schema_name(e.ECClassId) as schemaName,
-    ec_schema_displayLabel(e.ECClassId) as schemaLabel,
-    ec_classDisplayLabel(e.ECClassId) as classLabel,
-    COUNT(*) as elementCount
-  FROM bis.GeometricElement3d e
-  GROUP BY e.ECClassId
-  ORDER BY schemaName, className
-`;
-
 
 export interface SchemaBrowserProps {
   iModel: IModelConnection;

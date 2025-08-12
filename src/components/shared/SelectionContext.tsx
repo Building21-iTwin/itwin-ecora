@@ -20,6 +20,10 @@ export interface SelectionState {
   setSelectedCategoryIds: (ids: string[]) => void;
   selectedModelIds: string[];
   setSelectedModelIds: (ids: string[]) => void;
+  categoryLabels: Record<string, string>;
+  setCategoryLabels: (labels: Record<string, string>) => void;
+  modelLabels: Record<string, string>;
+  setModelLabels: (labels: Record<string, string>) => void;
   tableFilters: TableFilter[];
   setTableFilters: (filters: TableFilter[]) => void;
   availableFields: Field[];
@@ -50,6 +54,8 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
+  const [categoryLabels, setCategoryLabels] = useState<Record<string, string>>({});
+  const [modelLabels, setModelLabels] = useState<Record<string, string>>({});
   const [selectedClassNames, setSelectedClassNames] = useState<string[]>([]);
   const [selectedSchemaNames, setSelectedSchemaNames] = useState<string[]>([]);
   
@@ -112,18 +118,30 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
     categoryIds: string[],
     filters: TableFilter[],
     availFields: Field[],
-    _classNames: string[],
-    _schemaNames: string[]
+    classNames: string[],
+    schemaNames: string[]
   ) => {
     
     const iModel = IModelApp.viewManager.selectedView?.iModel;
     if (!iModel) return;
 
     // Build query with filters
-    const query = elementQuery(modelIds, categoryIds, filters, availFields);
+    const query = elementQuery(modelIds, categoryIds, filters, availFields, classNames, schemaNames);
     
-    // If no query (no selection and no filters), do not override manual selection/emphasis
-    if (!query) return;
+    // If no query (no selection and no filters), clear selection/emphasis so UI (TableGrid) reflects empty state
+    if (!query) {
+      const nothingSelected =
+        modelIds.length === 0 &&
+        categoryIds.length === 0 &&
+        filters.length === 0 &&
+        classNames.length === 0 &&
+        schemaNames.length === 0;
+      if (nothingSelected) {
+        // Clear selection unconditionally when all selection criteria are cleared
+        clearSelectionAndEmphasis();
+      }
+      return;
+    }
 
     const queryReader = iModel.createQueryReader(query, undefined, { rowFormat: QueryRowFormat.UseECSqlPropertyNames});
     const elements = await queryReader.toArray();
@@ -138,7 +156,7 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
       emphasize.clearEmphasizedElements(vp);
       emphasize.emphasizeElements(elements.map((el: any) => el.id), vp, undefined, true);
     }
-  }, []);
+  }, [clearSelectionAndEmphasis]);
 
   useEffect(() => {
     void updateSelectedElements(
@@ -155,10 +173,12 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   const onSelectionChange = (type: "category" | "model", ids: string[]) => {
     if (type === "category") {
       setSelectedCategoryIds(ids);
+      if (ids.length === 0) setCategoryLabels({});
     } else {
       setSelectedModelIds(ids);
+      if (ids.length === 0) setModelLabels({});
     }
-    if (ids.length === 0 && (type === "category" ? selectedModelIds.length : selectedCategoryIds.length) === 0) {
+  if (ids.length === 0 && (type === "category" ? selectedModelIds.length : selectedCategoryIds.length) === 0) {
       clearSelectionAndEmphasis();
     }
   };
@@ -175,6 +195,10 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
         setSelectedCategoryIds: setSelectedIdsWrapper("category"),
         selectedModelIds,
         setSelectedModelIds: setSelectedIdsWrapper("model"),
+  categoryLabels,
+  setCategoryLabels,
+  modelLabels,
+  setModelLabels,
         tableFilters,
         setTableFilters,
         availableFields,

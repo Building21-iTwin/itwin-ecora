@@ -93,7 +93,7 @@ export class LeftPanelUIProvider implements UiItemsProvider {
 
     const thirdWidget: Widget = {
         id: "ThirdWidget",
-    label: "Class Browser",
+    label: "Classes",
         content: <SchemaBrowserWrapper />,
       };
       widgets.push(thirdWidget);

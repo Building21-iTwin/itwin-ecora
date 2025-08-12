@@ -12,6 +12,7 @@
 import React, { useEffect, useState } from "react";
 import { IModelApp } from "@itwin/core-frontend";
 import { Button, Flex, Input, ProgressRadial } from "@itwin/itwinui-react";
+import { useSelection } from "../shared/SelectionContext";
 
 interface SelectableListProps {
   query: string;
@@ -35,6 +36,7 @@ export function SelectableListComponent(props: SelectableListProps) {
   } = props;
   // List of items to display (id/label pairs)
   const [items, setItems] = useState<{ id: string; label: string }[]>([]);
+  const { setCategoryLabels, setModelLabels } = useSelection();
   
   // Loading state for data fetching (only set during fetch, not selection)
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -111,12 +113,27 @@ export function SelectableListComponent(props: SelectableListProps) {
       ? selectedIds.filter((sid) => sid !== id)
       : [...selectedIds, id];
     setSelectedIds(newSelectedIds);
+    // Push label maps into context so the filter bar can use them directly
+    const labelMap = items.reduce<Record<string, string>>((acc, it) => {
+      acc[it.id] = it.label;
+      return acc;
+    }, {});
+    if (className.includes("SpatialCategory")) {
+      setCategoryLabels(labelMap);
+    } else if (className.includes("PhysicalModel")) {
+      setModelLabels(labelMap);
+    }
   };
 
   // Clear all selections
   const handleClearAll = () => {
     if (selectedIds.length > 0) {
       setSelectedIds([]);
+      if (className.includes("SpatialCategory")) {
+        setCategoryLabels({});
+      } else if (className.includes("PhysicalModel")) {
+        setModelLabels({});
+      }
     }
   };
 
