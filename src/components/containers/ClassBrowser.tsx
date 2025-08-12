@@ -3,22 +3,12 @@
  * See LICENSE.md in the project root for license terms and full copyright notice.
  *--------------------------------------------------------------------------------------------*/
 
-import { useCallback, useEffect, useState } from "react";
-import { 
-  Button, 
-  Flex, 
-  IconButton,
-  ProgressRadial,
-  Text, 
-  Tooltip,
-  Table as UiTable
-} from "@itwin/itwinui-react";
-import { SvgClose, SvgRefresh, SvgStatusWarning } from "@itwin/itwinui-icons-react";
+import React, { useEffect, useState } from "react";
+import { Button, Flex, Input, ProgressRadial } from "@itwin/itwinui-react";
 import { IModelConnection } from "@itwin/core-frontend";
 import { QueryRowFormat } from "@itwin/core-common";
 import { schemaDiscoveryQuery } from "../utils/QueryBuilders";
 import { useSelection } from "../shared/SelectionContext";
-import { ActiveFiltersDisplay } from "./TableFilter";
 
 export interface SchemaBrowserProps {
   iModel: IModelConnection;
@@ -33,280 +23,192 @@ interface SchemaClass {
 }
 
 export function SchemaBrowser({ iModel }: SchemaBrowserProps) {
-  const { selectedClassNames, setSelectedClassNames, selectedSchemaNames, setSelectedSchemaNames, selectedCategoryIds, selectedModelIds, setSelectedCategoryIds, setSelectedModelIds } = useSelection();
+  const { selectedClassNames, setSelectedClassNames } = useSelection();
   const [schemaClasses, setSchemaClasses] = useState<SchemaClass[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [searchString, setSearchString] = useState<string>("");
 
-  const loadSchemaClasses = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const query = schemaDiscoveryQuery();
-      
-      const results: SchemaClass[] = [];
-      const queryReader = iModel.createQueryReader(query, undefined, { rowFormat: QueryRowFormat.UseECSqlPropertyNames });
-    for await (const row of queryReader) {
-        results.push({
-          className: row.className as string,
-      schemaName: row.schemaName as string,
-          schemaLabel: row.schemaLabel as string,
-          classLabel: row.classLabel as string,
-          elementCount: row.elementCount as number
-        });
+  // Fetch schema classes whenever iModel changes
+  useEffect(() => {
+    let cancelled = false;
+    const loadSchemaClasses = async () => {
+      if (!iModel) {
+        if (!cancelled) {
+          setSchemaClasses([]);
+          setIsLoading(false);
+        }
+        return;
       }
-      
-      setSchemaClasses(results);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load schema classes");
-    } finally {
-      setLoading(false);
-    }
+
+      setIsLoading(true);
+      try {
+        const query = schemaDiscoveryQuery();
+        const results: SchemaClass[] = [];
+        const queryReader = iModel.createQueryReader(query, undefined, { rowFormat: QueryRowFormat.UseECSqlPropertyNames });
+        
+        for await (const row of queryReader) {
+          results.push({
+            className: row.className as string,
+            schemaName: row.schemaName as string,
+            schemaLabel: row.schemaLabel as string,
+            classLabel: row.classLabel as string,
+            elementCount: row.elementCount as number
+          });
+        }
+        
+        if (!cancelled) {
+          setSchemaClasses(results);
+          setIsLoading(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setSchemaClasses([]);
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadSchemaClasses();
+    return () => {
+      cancelled = true;
+    };
   }, [iModel]);
 
-  const handleClassSelect = useCallback((className: string) => {
-    const exists = selectedClassNames.includes(className);
-    const next = exists ? selectedClassNames.filter((c) => c !== className) : [...selectedClassNames, className];
-    setSelectedClassNames(next);
-  }, [selectedClassNames, setSelectedClassNames]);
+  // Handle checkbox toggle for a class
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const className = event.target.id;
+    const isSelected = selectedClassNames.includes(className);
+    const newSelectedClassNames = isSelected
+      ? selectedClassNames.filter((name) => name !== className)
+      : [...selectedClassNames, className];
+    setSelectedClassNames(newSelectedClassNames);
+  };
 
-  const clearSelection = useCallback(() => {
-    setSelectedClassNames([]);
-    setSelectedSchemaNames([]);
-  }, [setSelectedClassNames, setSelectedSchemaNames]);
+  // Clear all selections
+  const handleClearAll = () => {
+    if (selectedClassNames.length > 0) {
+      setSelectedClassNames([]);
+    }
+  };
 
-  useEffect(() => {
-    // Auto-load on mount
-    void loadSchemaClasses();
-  }, [loadSchemaClasses]);
+  // Filter classes by search string (case-insensitive)
+  const searchTextLower = searchString.toLowerCase();
+  const filteredClasses = schemaClasses.filter((schemaClass) => 
+    schemaClass.classLabel.toLowerCase().includes(searchTextLower) ||
+    schemaClass.schemaLabel.toLowerCase().includes(searchTextLower) ||
+    schemaClass.className.toLowerCase().includes(searchTextLower)
+  );
 
-  const columns = [
-    {
-      Header: "Schema",
-      accessor: "schemaLabel",
-      width: 200,
-    },
-    {
-      Header: "Class",
-      accessor: "classLabel",
-      width: 250,
-    },
-    {
-      Header: "Count",
-      accessor: "elementCount",
-      width: 80,
-      Cell: ({ value }: { value: unknown }) => (
-        <Text variant="small" style={{ textAlign: "right", display: "block" }}>
-          {(value as number).toLocaleString()}
-        </Text>
-      ),
-    },
-    {
-      Header: "Actions",
-      width: 100,
-    Cell: ({ row }: { row: { original: SchemaClass } }) => (
-        <Button 
-          size="small"
-      styleType={selectedClassNames.includes(row.original.className) ? "high-visibility" : "default"}
-          onClick={() => handleClassSelect(row.original.className)}
-        >
-      {selectedClassNames.includes(row.original.className) ? "Selected" : "Select"}
-        </Button>
-      ),
-    },
-  ];
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      {/* Header */}
-      <div style={{ padding: "1rem", borderBottom: "1px solid #e1e5e9" }}>
-        <Flex alignItems="center" justifyContent="space-between">
-          <Text variant="title">Class and Schema Browser</Text>
-          <Flex gap="sm" alignItems="center">
-            <Tooltip content="Refresh schema classes">
-              <IconButton
-                size="small"
-                onClick={() => void loadSchemaClasses()}
-                disabled={loading}
-              >
-                <SvgRefresh />
-              </IconButton>
-            </Tooltip>
-      {(selectedClassNames.length > 0 || selectedSchemaNames.length > 0) && (
-              <Tooltip content="Clear class selection">
-                <IconButton
-                  size="small"
-                  styleType="high-visibility"
-                  onClick={clearSelection}
-                >
-                  <SvgClose />
-                </IconButton>
-              </Tooltip>
-            )}
-          </Flex>
-        </Flex>
-        
-    {(selectedClassNames.length > 0 || selectedSchemaNames.length > 0) && (
-          <div style={{ 
-            marginTop: "0.5rem", 
-            padding: "0.5rem", 
-            backgroundColor: "#e3f2fd", 
-            borderRadius: "4px",
-            border: "1px solid #bbdefb",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem"
-          }}>
-            <SvgStatusWarning style={{ width: 18, height: 18 }} />
-            <Text variant="small" style={{ fontWeight: 500, color: "#1565c0" }}>
-        {selectedClassNames.length > 0 && `Filtering by ${selectedClassNames.length} class${selectedClassNames.length === 1 ? '' : 'es'}`}
-        {selectedSchemaNames.length > 0 && `${selectedClassNames.length > 0 ? ' and ' : ''}${selectedSchemaNames.length} schema${selectedSchemaNames.length === 1 ? '' : 's'}`}.
-        Please view in Description Grid
-            </Text>
-          </div>
-        )}
-      </div>
-
-      {/* Content */}
-      <div style={{ flex: 1, padding: "1rem" }}>
-        {/* Active Filters Display - same as Description Grid */}
-        <div style={{ marginBottom: "0.5rem" }}>
-          <ActiveFiltersDisplay />
+  // Render each class as a checkbox list entry
+  const classElements = filteredClasses.map((schemaClass) => (
+    <li
+      key={schemaClass.className}
+      style={{
+        listStyle: "none",
+        margin: "0.25rem 0",
+        padding: "0.25rem",
+        display: "flex",
+        alignItems: "center",
+        gap: "0.5rem",
+        borderRadius: "4px",
+        backgroundColor: selectedClassNames.includes(schemaClass.className) ? "#f0f8ff" : "transparent",
+      }}
+    >
+      <label
+        htmlFor={schemaClass.className}
+        style={{
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: "0.5rem",
+          width: "100%",
+        }}
+        title={`${schemaClass.schemaLabel}:${schemaClass.classLabel} (${schemaClass.elementCount.toLocaleString()} elements)`}
+        aria-label={`Toggle ${schemaClass.classLabel} class selection`}
+      >
+        <input
+          type="checkbox"
+          id={schemaClass.className}
+          name="class"
+          checked={selectedClassNames.includes(schemaClass.className)}
+          onChange={handleChange}
+          style={{ cursor: "pointer" }}
+        />
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "2px" }}>
+          <span style={{ fontSize: "0.875rem", fontWeight: "500" }}>
+            {schemaClass.classLabel}
+          </span>
+          <span style={{ fontSize: "0.75rem", color: "#666" }}>
+            {schemaClass.schemaLabel} • {schemaClass.elementCount.toLocaleString()} elements
+          </span>
         </div>
+      </label>
+    </li>
+  ));
 
-        {/* Active Selections (models/categories/class) like Description Grid */}
-  {(selectedCategoryIds.length > 0 || selectedModelIds.length > 0 || selectedClassNames.length > 0 || selectedSchemaNames.length > 0) && (
-          <div style={{ 
-            padding: "0.5rem", 
-            backgroundColor: "#fff3cd", 
-            border: "1px solid #ffeaa7", 
-            borderRadius: "4px",
-            marginBottom: "0.75rem"
-          }}>
-            <Flex alignItems="center" gap="sm" justifyContent="space-between">
-              <Flex alignItems="center" gap="sm">
-                <Flex alignItems="center" gap="xs">
-                  <SvgStatusWarning style={{ width: 18, height: 18, verticalAlign: "middle" }} />
-                  <Text variant="small" style={{ fontWeight: 500, color: "#856404" }}>
-                    Active selections filtering results:
-                  </Text>
-                </Flex>
-                <Flex gap="xs" style={{ flexWrap: "wrap" }}>
-                  {selectedCategoryIds.length > 0 && (
-                    <Text variant="small" style={{ 
-                      backgroundColor: "#fd7e14", 
-                      color: "white", 
-                      padding: "2px 6px", 
-                      borderRadius: "4px",
-                      fontSize: "11px"
-                    }}>
-                      {selectedCategoryIds.length} categor{selectedCategoryIds.length === 1 ? 'y' : 'ies'}
-                    </Text>
-                  )}
-                  {selectedModelIds.length > 0 && (
-                    <Text variant="small" style={{ 
-                      backgroundColor: "#20c997", 
-                      color: "white", 
-                      padding: "2px 6px", 
-                      borderRadius: "4px",
-                      fontSize: "11px"
-                    }}>
-                      {selectedModelIds.length} model{selectedModelIds.length === 1 ? '' : 's'}
-                    </Text>
-                  )}
-                  {selectedClassNames.length > 0 && (
-                    <Text variant="small" style={{ 
-                      backgroundColor: "#6f42c1", 
-                      color: "white", 
-                      padding: "2px 6px", 
-                      borderRadius: "4px",
-                      fontSize: "11px"
-                    }}>
-                      {selectedClassNames.length} class{selectedClassNames.length === 1 ? '' : 'es'}
-                    </Text>
-                  )}
-                  {selectedSchemaNames.length > 0 && (
-                    <Text variant="small" style={{ 
-                      backgroundColor: "#0d6efd", 
-                      color: "white", 
-                      padding: "2px 6px", 
-                      borderRadius: "4px",
-                      fontSize: "11px"
-                    }}>
-                      {selectedSchemaNames.length} schema{selectedSchemaNames.length === 1 ? '' : 's'}
-                    </Text>
-                  )}
-                </Flex>
-              </Flex>
-              <Button 
-                size="small" 
-                styleType="borderless" 
-                onClick={() => { setSelectedCategoryIds([]); setSelectedModelIds([]); setSelectedClassNames([]); setSelectedSchemaNames([]); }}
-                style={{ color: "#856404" }}
-              >
-                Clear selections
-              </Button>
-            </Flex>
+  // Handle search input change
+  const searchInputChanged = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchString(event.target.value);
+  };
+
+  // Main render: search bar, clear button, and list of classes
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <Flex
+        style={{
+          position: "sticky",
+          top: 0,
+          width: "100%",
+          padding: "0.5rem",
+          zIndex: 1,
+          background: "white",
+          borderBottom: "1px solid #e0e0e0",
+        }}
+        flexDirection="column"
+        gap="xs"
+      >
+        <Flex gap="xs" alignItems="center">
+          <Input
+            style={{ flex: 1 }}
+            placeholder="Search classes and schemas..."
+            value={searchString}
+            onChange={searchInputChanged}
+          />
+          <Button
+            size="small"
+            onClick={handleClearAll}
+            disabled={selectedClassNames.length === 0}
+          >
+            Clear
+          </Button>
+        </Flex>
+        {selectedClassNames.length > 0 && (
+          <div style={{ fontSize: "0.75rem", color: "#666" }}>
+            {selectedClassNames.length} selected
           </div>
         )}
-
-        {loading && (
-          <div style={{ 
-            display: "flex", 
-            justifyContent: "center", 
-            alignItems: "center", 
-            height: "200px",
-            flexDirection: "column",
-            gap: "1rem"
-          }}>
-            <ProgressRadial size="large" indeterminate={true} />
-            <Text>Loading schema classes...</Text>
-          </div>
-        )}
-
-        {error && (
-          <div style={{ 
-            padding: "1rem", 
-            backgroundColor: "#ffebee", 
-            border: "1px solid #ffcdd2",
-            borderRadius: "4px",
-            color: "#c62828"
-          }}>
-            <Text variant="small" style={{ fontWeight: 500 }}>
-              Error: {error}
-            </Text>
-          </div>
-        )}
-
-        {!loading && !error && schemaClasses.length === 0 && (
+      </Flex>
+      <div style={{ flex: 1, overflow: "auto", padding: "0.25rem" }}>
+        {isLoading ? (
           <div style={{ 
             padding: "2rem", 
-            textAlign: "center",
-            backgroundColor: "#f5f5f5",
-            borderRadius: "4px"
+            textAlign: "center", 
+            display: "flex", 
+            flexDirection: "column", 
+            alignItems: "center", 
+            gap: "1rem" 
           }}>
-            <Text>No schema classes found. Click refresh to try again.</Text>
-          </div>
-        )}
-
-        {!loading && !error && schemaClasses.length > 0 && (
-          <div>
-            <div style={{ marginBottom: "1rem" }}>
-              <Text variant="small" style={{ color: "#666" }}>
-                Found {schemaClasses.length} class{schemaClasses.length === 1 ? "" : "es"} across different schemas
-              </Text>
+            <ProgressRadial size="large" indeterminate={true} />
+            <div style={{ color: "#666", fontSize: "0.875rem" }}>
+              Loading classes...
             </div>
-            
-            <UiTable
-              columns={columns}
-              data={schemaClasses as unknown as Record<string, unknown>[]}
-              enableVirtualization={true}
-              density="extra-condensed"
-              styleType="zebra-rows"
-              emptyTableContent="No schema classes found"
-              style={{ height: "400px" }}
-            />
           </div>
+        ) : schemaClasses.length === 0 ? (
+          <div style={{ padding: "1rem", textAlign: "center", color: "#666" }}>
+            {iModel ? "No classes found" : "No iModel loaded"}
+          </div>
+        ) : (
+          <ul style={{ padding: 0, margin: 0 }}>{classElements}</ul>
         )}
       </div>
     </div>
