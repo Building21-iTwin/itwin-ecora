@@ -59,15 +59,8 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   const [selectedClassNames, setSelectedClassNames] = useState<string[]>([]);
   const [selectedSchemaNames, setSelectedSchemaNames] = useState<string[]>([]);
   
-  // Load saved filters from localStorage on initialization
-  const [tableFilters, setTableFiltersState] = useState<TableFilter[]>(() => {
-    try {
-      const saved = localStorage.getItem('itwin-grid-filters');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  // Do not persist table filters; always start empty on reload
+  const [tableFilters, setTableFiltersState] = useState<TableFilter[]>([]);
   
   const [availableFields, setAvailableFields] = useState<Field[]>([]);
   // Keep a ref of availableFields to avoid triggering selection updates on manual selection (which changes columns)
@@ -76,24 +69,20 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
     availableFieldsRef.current = availableFields;
   }, [availableFields]);
 
-  // Custom setTableFilters that also saves to localStorage
+  // Do not persist filters; just update state
   const setTableFilters = (filters: TableFilter[]) => {
     setTableFiltersState(filters);
-    try {
-      localStorage.setItem('itwin-grid-filters', JSON.stringify(filters));
-    } catch {
-      // Silently fail if localStorage is not available
-    }
   };
 
   // Clear all table filters
   const clearAllFilters = () => setTableFilters([]);
 
-  // Do not persist class/schema selections: proactively remove any legacy keys
+  // Do not persist class/schema selections or table filters: proactively remove any legacy keys
   useEffect(() => {
     try {
       localStorage.removeItem('itwin-grid-selected-classes');
       localStorage.removeItem('itwin-grid-selection');
+      localStorage.removeItem('itwin-grid-filters');
     } catch {
       // Ignore storage errors (SSR or restricted environments)
     }
