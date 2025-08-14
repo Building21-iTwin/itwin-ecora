@@ -1,64 +1,87 @@
-# iTwin Viewer App Template
+<div align="center">
+	<picture>
+		<source media='(prefers-color-scheme: dark)' srcset='https://itwin.github.io/iTwinUI/logo-dark.svg' />
+		<img src='https://itwin.github.io/iTwinUI/logo.svg' alt='iTwin logo' height='70' />
+	</picture>
+	<h1>iTwin Ecora</h1>
+	<p><strong>Zero‑code element & property exploration for iModel data.</strong></p>
+	<sub>By Antonio Archer & Jamir Ong</sub>
+</div>
 
-This template is built using [vite](https://vite.dev/). New app based on this template can be created by running:
+---
+
+## Overview
+
+iTwin Ecora is a lightweight viewer that lets iTwin Platform users browse elements and inspect their stored property values in an iModel without writing ECSQL. Pick structural dimensions (Models, Categories, Schemas, Classes) and apply simple text filters to instantly refine the result set.
+
+## Key Features
+
+- Unified element table: IDs, class names, and resolved property values.
+- One‑click filters for: Models, Categories, Schemas, Classes.
+- Instant query generation; no manual ECSQL or joins to remember.
+
+## How It Works (Brief)
+
+1. Your selections & text inputs are stored in a context provider.
+2. `elementQuery` builds the minimal ECSQL (only needed joins, only id + className projected).
+3. The resulting element IDs drive Presentation’s unified selection which supplies table columns.
+4. Column filters feed back into the query cycle for refinement.
+
+## Prerequisites
+
+- Node 20 (LTS)
+- Valid iTwin + iModel IDs (and auth client config) 
+
+## Quick Start
 
 ```sh
-npx degit saskliutas/vite-itwin-web-viewer#main my-project
+git clone <your-fork-url>
+cd itwin-grid-search
+npm install
+cp .env.example .env   # add auth + iTwin/iModel IDs
+npm dev
+```
+Open http://localhost:3000
+
+Runtime switch:
+```
+http://localhost:3000?iTwinId=<ITWIN_ID>&iModelId=<IMODEL_ID>
 ```
 
 ## Environment Variables
 
-Prior to running the app, you will need to add OIDC client configuration to the variables in the .env file:
+| Name | Purpose |
+| ---- | ------- |
+| IMJS_AUTH_CLIENT_CLIENT_ID | SPA OIDC client id |
+| IMJS_AUTH_CLIENT_REDIRECT_URI | Redirect URI (must match registration) |
+| IMJS_AUTH_CLIENT_LOGOUT_URI | Post logout redirect |
+| IMJS_AUTH_CLIENT_SCOPES | Include `itwin-platform` |
+| IMJS_ITWIN_ID | Default iTwin to open |
+| IMJS_IMODEL_ID | Default iModel inside that iTwin |
+| IMJS_BING_MAPS_KEY | Optional maps key |
+| IMJS_CESIUM_ION_KEY | Optional Cesium terrain key |
 
-```
-# ---- Authorization Client Settings ----
-IMJS_AUTH_CLIENT_CLIENT_ID=""
-IMJS_AUTH_CLIENT_REDIRECT_URI=""
-IMJS_AUTH_CLIENT_LOGOUT_URI=""
-IMJS_AUTH_CLIENT_SCOPES=""
-```
+## Scripts
 
-- You can generate a [test client](https://developer.bentley.com/tutorials/web-application-quick-start/#3-register-an-application) to get started.
+| Command | Description |
+| ------- | ----------- |
+| npm dev | Start Vite dev server |
+| npm build | Type check then production build |
+| npm preview | Preview production bundle |
+| npm lint | ESLint over sources |
+| npm typecheck | TypeScript no‑emit check |
 
-- Viewer expects the `itwin-platform` scope to be set.
+## Roadmap (Short)
 
-- The application will use the path of the redirect URI to handle the redirection, it must simply match what is defined in your client.
+- Numeric/date comparison operators.
+- OR multi‑term column filtering.
+- Optional saved filter presets.
+- Export selected element set.
 
-- When you are ready to build a production application, [register here](https://developer.bentley.com/register/).
+## License
 
-You should also add a valid iTwinId and iModelId for your user in the this file:
+See `LICENSE`.
 
-```
-# ---- Test ids ----
-IMJS_ITWIN_ID = ""
-IMJS_IMODEL_ID = ""
-```
+---
 
-- For the IMJS_ITWIN_ID variable, you can use the id of one of your existing iTwins. You can obtain their ids via the [iTwin REST APIs](https://developer.bentley.com/apis/itwins/operations/get-itwin/).
-
-- For the IMJS_IMODEL_ID variable, use the id of an iModel that belongs to the iTwin that you specified in the IMJS_ITWIN_ID variable. You can obtain iModel ids via the [iModel REST APIs](https://developer.bentley.com/apis/imodels-v2/operations/get-imodel-details/).
-
-- Alternatively, you can [generate a test iModel](https://developer.bentley.com/tutorials/web-application-quick-start/#4-create-an-imodel) to get started without an existing iModel.
-
-- If at any time you wish to change the iModel that you are viewing, you can change the values of the iTwinId or iModelId query parameters in the url (i.e. localhost:3000?iTwinId=myNewITwinId&iModelId=myNewIModelId)
-
-## Running App
-
-Run the following:
-
-```sh
-pnpm install
-pnpm dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
-
-## Next Steps
-
-- [iTwin Viewer options](https://www.npmjs.com/package/@itwin/web-viewer-react)
-
-- [Extending the iTwin Viewer](https://developer.bentley.com/tutorials/itwin-viewer-hello-world/)
-
-- [Using the iTwin Platform](https://developer.bentley.com/)
-
-- [iTwin Developer Program](https://www.youtube.com/playlist?list=PL6YCKeNfXXd_dXq4u9vtSFfsP3OTVcL8N)
+Built with iTwin Platform APIs.
