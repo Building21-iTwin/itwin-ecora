@@ -1,0 +1,14 @@
+User-agent: *
+# Allow normal indexing of the main site
+Allow: /
+
+# Slow down generic scrapers
+Crawl-delay: 5
+
+# Optional: block common aggressive bots
+User-agent: AhrefsBot
+Disallow: /
+User-agent: SemrushBot
+Disallow: /
+User-agent: MJ12bot
+Disallow: /

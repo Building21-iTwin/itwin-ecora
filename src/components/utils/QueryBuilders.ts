@@ -13,12 +13,6 @@ function getEcPropertyName(field?: Field): string | undefined {
   return typeof name === "string" ? name : undefined;
 }
 
-// Safely quote an EC property name for ECSQL
-function qProp(name: string): string {
-  // Wrap in square brackets to avoid issues with casing/reserved words
-  return `[${name}]`;
-}
-
 // Determine nav kind from filter/field metadata
 function getNavKind(filter: TableFilter): "model" | "category" | "typedefinition" | "parent" | undefined {
   const id = (filter.id || "").toString().toLowerCase();
@@ -37,8 +31,9 @@ export function buildFilterWhereClause(tableFilters: TableFilter[]): string {
   return tableFilters
     .map(filter => {
       const escapedValue = filter.value.replace(/'/g, "''");
-  // Fall back to filter.id, but ensure we quote the property name
-  return `${qProp(filter.id)} LIKE '%${escapedValue}%'`;
+      const escapedProperty = filter.id.replace(/]/g, "]]"); // escape closing bracket if any
+      // Use $-> with bracket quoting. This form will skip elements missing the property.
+      return `e.$->[${escapedProperty}] LIKE '%${escapedValue}%'`;
     })
     .join(" AND ");
 }
@@ -92,15 +87,10 @@ export const elementQuery = (
   // Main table and alias
   const baseTable = "bis.GeometricElement3d";
   const baseAlias = "e";
-  // Always select id and label, plus any primitive field filters
+  // Always select only the required identifiers; dynamic properties are not projected to avoid parse errors
   const selectFields = [
     "e.ECInstanceId as id",
-    "ec_classname(e.ECClassId) as className",
-    // Include any requested primitive fields using resolved EC property names
-    ...fieldPropFilters
-      .map(f => getEcPropertyName(f.field) ?? f.id)
-      .filter((n): n is string => !!n)
-      .map(n => `e.${qProp(n)}`)
+    "ec_classname(e.ECClassId) as className"
   ];
   // If model nav filter present, add me.UserLabel to SELECT
   if (navPropFilters.some(f => getNavKind(f) === "model")) {
@@ -146,11 +136,13 @@ export const elementQuery = (
   const needsSchemaJoin = !!(selectedSchemaNames && selectedSchemaNames.length > 0);
   const schemaNamesEscaped = (selectedSchemaNames || []).map((s) => s.replace(/'/g, "''"));
   
-  // Primitive field filters (string properties)
+  // Primitive field filters (string properties) - use $-> with bracket syntax
   for (const f of fieldPropFilters) {
-  const propName = getEcPropertyName(f.field) ?? f.id;
+    const propName = getEcPropertyName(f.field) ?? f.id;
+    if (!propName) continue;
     const val = f.value.replace(/'/g, "''");
-  whereClauses.push(`e.${qProp(propName)} LIKE '%${val}%'`);
+    const dynProp = propName.replace(/]/g, "]]");
+    whereClauses.push(`e.$->[${dynProp}] LIKE '%${val}%'`);
   }
   // Category id filter
   if (categoryIds.length > 0) {
@@ -195,6 +187,31 @@ export const elementQuery = (
   return query;
 };
 
+// Produce a COUNT(*) variant of the element query for total size determination
+export const elementCountQuery = (
+  modelIds: string[],
+  categoryIds: string[],
+  filters: TableFilter[],
+  availFields: Field[],
+  selectedClassNames?: string[],
+  selectedSchemaNames?: string[]
+) => {
+  const base = elementQuery(
+    modelIds,
+    categoryIds,
+    filters,
+    availFields,
+    selectedClassNames,
+    selectedSchemaNames
+  );
+  if (!base) return "";
+  // Replace the SELECT list with COUNT(*)
+  const upper = base.toUpperCase();
+  const fromIdx = upper.indexOf(" FROM ");
+  if (fromIdx === -1) return ""; // safety
+  return `SELECT COUNT(*) as total${base.substring(fromIdx)}`;
+};
+
 /**
  * Query to discover all element classes and their schemas in the iModel
  * This gives you a high-level view of what types of elements exist
@@ -231,8 +248,8 @@ export const elementsByClassQuery = (className: string) => {
     SELECT 
       e.ECInstanceId as id,
       ec_classname(e.ECClassId) as className,
-      e.UserLabel,
-      e.CodeValue
+  e.UserLabel,
+  e.CodeValue
     FROM bis.GeometricElement3d e 
     WHERE e.ECClassId IS (${classToken})
   `;

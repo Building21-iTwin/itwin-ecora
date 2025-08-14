@@ -33,6 +33,7 @@ export interface SelectionState {
   selectedSchemaNames: string[];
   setSelectedSchemaNames: (schemaNames: string[]) => void;
   clearAllFilters: () => void;
+  totalSelectedCount: number;
 }
 
 const SelectionContext = createContext<SelectionState | undefined>(undefined);
@@ -58,6 +59,7 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
   const [modelLabels, setModelLabels] = useState<Record<string, string>>({});
   const [selectedClassNames, setSelectedClassNames] = useState<string[]>([]);
   const [selectedSchemaNames, setSelectedSchemaNames] = useState<string[]>([]);
+  const [totalSelectedCount, setTotalSelectedCount] = useState<number>(0);
   
   // Do not persist table filters; always start empty on reload
   const [tableFilters, setTableFiltersState] = useState<TableFilter[]>([]);
@@ -128,12 +130,14 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
       if (nothingSelected) {
         // Clear selection unconditionally when all selection criteria are cleared
         clearSelectionAndEmphasis();
+        setTotalSelectedCount(0);
       }
       return;
     }
 
     const queryReader = iModel.createQueryReader(query, undefined, { rowFormat: QueryRowFormat.UseECSqlPropertyNames});
     const elements = await queryReader.toArray();
+    setTotalSelectedCount(elements.length);
     const keySet = new KeySet(elements as Keys);
     Presentation.selection.replaceSelection("My Selection", iModel, keySet);
     // Emphasize all selected elements
@@ -184,10 +188,10 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
         setSelectedCategoryIds: setSelectedIdsWrapper("category"),
         selectedModelIds,
         setSelectedModelIds: setSelectedIdsWrapper("model"),
-  categoryLabels,
-  setCategoryLabels,
-  modelLabels,
-  setModelLabels,
+        categoryLabels,
+        setCategoryLabels,
+        modelLabels,
+        setModelLabels,
         tableFilters,
         setTableFilters,
         availableFields,
@@ -197,6 +201,7 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
         selectedSchemaNames,
         setSelectedSchemaNames,
         clearAllFilters,
+        totalSelectedCount,
       }}
     >
       {children}

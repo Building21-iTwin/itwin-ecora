@@ -21,6 +21,7 @@ import type {
 } from "@itwin/presentation-components";
 import { useSelection } from "../shared/SelectionContext";
 import { ColumnFilter } from "./TableFilter";
+// useSelection already imported above
 
 // Unified component to show all active filters (selections + column filters)
 function UnifiedFiltersDisplay() {
@@ -539,7 +540,7 @@ export interface TableProps {
  */
 
 export function Table({ iModel, width: _width, height: _height, loadingContentState, noContentState, noRowsState }: TableProps) {
-  const { tableFilters, setAvailableFields, selectedCategoryIds, selectedModelIds } = useSelection();
+  const { tableFilters, setAvailableFields, selectedCategoryIds, selectedModelIds, totalSelectedCount } = useSelection();
   
   // Track loading state for initial data fetch
   const [isInitialLoading, setIsInitialLoading] = React.useState(true);
@@ -587,8 +588,7 @@ export function Table({ iModel, width: _width, height: _height, loadingContentSt
     }
   }, [columns, setAvailableFields]);
 
-  // Counter for number of elements (rows) - using actual rows since filtering is done on backend
-  // const totalCount = rows ? rows.length : 0;
+  const totalCount = totalSelectedCount;
 
   if (columns === undefined) {
     return (
@@ -633,6 +633,18 @@ export function Table({ iModel, width: _width, height: _height, loadingContentSt
     <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column" }}>
       {/* Unified Filters Display */}
       <UnifiedFiltersDisplay />
+      {/* Total count display */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "flex-end",
+        padding: "2px 6px 4px",
+        fontSize: "0.65rem",
+        color: "#444",
+        borderBottom: "1px solid #e1e5ea"
+      }}>
+      <span style={{ fontWeight: 500 }}>Total:</span>&nbsp;{totalCount.toLocaleString()} element{totalCount === 1 ? "" : "s"}
+      </div>
       
       {/* Table - Takes up most of the space */}
       <div style={{ flex: 1, minHeight: 0 }}>
