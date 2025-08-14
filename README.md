@@ -35,8 +35,8 @@ iTwin Ecora is a lightweight viewer that lets iTwin Platform users browse elemen
 ## Quick Start
 
 ```sh
-git clone <your-fork-url>
-cd itwin-grid-search
+git clone https://github.com/Building21-iTwin/itwin-ecora.git
+cd itwin-ecora
 npm install
 cp .env.example .env   # add auth + iTwin/iModel IDs
 npm dev
